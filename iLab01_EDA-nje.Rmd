@@ -1,0 +1,69 @@
+---
+title: "iLab 01 - EDA"
+author: "Nathaniel Evans"
+date: "October 1, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyverse) # all the good stuff
+library(readxl) # for reading in xlsx files
+library(here) # for here!
+library(janitor) # for clean_names & tabyl
+library(knitr) # for kable
+
+library(reprohealth)
+data <- wb_reprohealth %>% mutate(year=parse_number(year))
+head(data)
+```
+## **reprohealth EDA**
+###How many variables/columns?
+There are 9 variables of types character (3) and numeric (6)
+```{r}
+summary(data)
+```
+##How many rows/observations?
+There are 3296 rows in this dataset. 
+```{r}
+n_rows <- data %>% count()
+print(n_rows)
+```
+##Which variables are numbers?
+The following variables are numeric of type <dbl> : 
+*year
+*edu_gen_parity
+*gdp_per_cap
+*life_exp
+*mat_mortality
+*tot_fertility
+```{r}
+data %>% glimpse()
+```
+##Which are categorical variables (numeric or character variables with variables that have a fixed and known set of possible values; aka factor variables)?
+The three character types and year have set possible values: 
+*year (16) [2000-2015]- technically of type <dbl> but since it's a year, they must be ints within bounded possible years (eg no years before XX and no years after 2018 -today!) so it _can_ be treated as a factor. Not sure if you'd want to or not though. 
+*country (206)
+*continent (5)
+*region (22)
+```{r}
+yrs <- data %>% distinct(year) %>% count()
+cntry <- data %>% distinct(country) %>% count()
+cntnt <- data %>% distinct(continent) %>% count()
+rgn <- data %>% distinct(region) %>% count()
+
+print(c("distinct years: ", yrs))
+print(c("distinct countries: ", cntry))
+print(c("distinct continents: ", cntnt))
+print(c("distinct regions: ", rgn))
+
+data$year %>% summary()
+
+```
+Complete this sentence: "There is one row per."
+```{r}
+head(data)
+```
+
