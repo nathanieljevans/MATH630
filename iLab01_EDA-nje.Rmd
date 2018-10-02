@@ -106,32 +106,70 @@ Just country.
 data_jnd <- left_join(data, alc2) 
 glimpse(data_jnd)
 ```
-#Part 3
+#Part 3 ----------------------
 ### "Your goal during EDA is to develop an understanding of your data. The easiest way to do this is to use questions as tools to guide your investigation.EDA is fundamentally a creative process. And like most creative processes, the key to asking quality questions is to generate a large quantity of questions." 
 
-Your mission in this last section is to pick at least three of the tasks below and attack each with a table and figure. In your narrative, reword each "task" into a logical research question(s). Make observations about what your tables/figures show and about the process. If you want to do something comparable but different, i.e. swap one quantitative variable for another, be our guest! If you are feeling inspired and curious, then we're doing this right. Go for it.
 
-Task menu
-Get the maximum and minimum of children per woman (tot_fertility) for all continents.
+#task 1
+##How does [alcohol consumption] (x1) vary across different continents?
+```{r}
+# what years does this include? 
+data_jnd %>% filter(!is.na(x1), !is.na(gdp_per_cap)) %>% select(year) %>% summary() 
+# lets create median of the years available 
+data3 <- data_jnd %>% filter(!is.na(x1), !is.na(gdp_per_cap)) %>% group_by(continent) %>% summarize(med_x1 = median(x1), med_gdp = median(gdp_per_cap)) 
+# get rid of med_gdp, we'll use that next. Generate table
+dg <- data3 %>% select(-med_gdp)
+dg
 
-Look at the spread of children per woman (tot_fertility) across countries within the continents.
+#plot a bar plot 
+dg %>% ggplot(aes(x=continent, y=med_x1, fill= continent)) + geom_col() + ggtitle("Alcohol consumption by continent")
+```
 
-Compute a trimmed mean of maternal mortality (mat_mortality) for different years. Or a weighted mean, weighting by population. Just try something other than the plain vanilla mean.
+From this table and chart, we can show that between the years of 2000 and 2008, the median liters of alcohol consumed per person per year varied significantly between continents. Europe was by far the leader in alcohol consumption, with americas being just under half as much. The remaining countries were all about half of the americas. 
 
-How does maternal mortality (mat_mortality) vary across different continents?
-
-Report the absolute and/or relative abundance of countries with low maternal mortality (mat_mortality) over time by continent: Compute some measure of worldwide maternal mortality - you decide - a mean or median or some other quantile or perhaps your current age. Then determine how many countries on each continent have a maternal mortality rate less than this benchmark, for each year.
-
+## task 2 : how do countries alcohol consumption change over time? 
 Find countries with interesting stories. Open-ended and, therefore, hard. Promising but unsuccessful attempts are encouraged. This will generate interesting questions to follow up on in class.
 
-Make up your own! Between the coverage in class, readings, and DataCamp plus the list above, you get the idea.
+```{r}
+data4 <-  data_jnd %>% filter(!is.na(x1), !is.na(gdp_per_cap)) %>% group_by(country)
+data4 %>% ggplot(aes(x=year, y=x1, color=country)) + geom_line() + ggtitle("country alcohol consumption over time") + theme(legend.position = "none")
+```
 
-Companion graphs
-For each table, make sure to include a relevant figure. One tip for starting is to draw out on paper what you want your x- and y-axis to be first and what your geom is; that is, start by drawing the plot you want ggplot to give you.
+Whoops! But very interesting, we only have one country with data from 2000 to 2008, the rest only span from 2005 - 2008. I'll filter to only include 2005-2008. Also, there are way too many countries to compare this way, so we'll filter to just Africa. Lastly, there is very little change over the years in countries with x1 less than 5 so we'll only include countries with x1 > 5. 
 
-Your figure does not have to depict every last number from the data aggregation result. Use your judgement. It just needs to complement the table, add context, and allow for some sanity checking both ways.
+```{r}
+head(data4)
+data4 %>% filter(year>=2005, continent=='Africa', x1>5) %>% ggplot(aes(x=year, y=x1, color=country)) + geom_line() + ggtitle("country alcohol consumption over time")
+```
+This didn't come out quite as nice as I'd hoped but there are some notable countries, in particular, Uganda, that top pink line, had a significant increase in alcohol consumption. To dig into that a little more... 
 
-Notice which figures are easy/hard to make, which data formats make better inputs for plotting functions vs. for human-friendly tables.
+```{r}
+ug_data <- data4 %>% filter(country=="Uganda")
+ug_data %>% glimpse() 
+```
 
-Report your process
-You're encouraged to reflect on what was hard/easy, problems you solved, helpful tutorials you read, etc. Give credit to your sources, whether it's a blog post, a fellow student, an online tutorial, etc.
+This table shows that the only other significant increase over these two observations were gdp_per_cap, which actually makes sense; I would expect that as gdp increases, so does alcohol consumption. 
+
+##task 3 - does alc consumption correllate to gdp_per_cap? 
+```{r}
+data4 %>% ggplot(aes(x=x1, y=gdp_per_cap, color=year)) + geom_point() + ggtitle("alc consumption vs gdp/cap") +  geom_smooth(method='lm')
+mod <- lm(formula=x1~gdp_per_cap, data=data4)
+summary(mod)
+```
+
+
+It looks like there is weak correlation, but a residual analysis is definitely needed and I 'd guess that there really isn't much predictive value in this model. However, it does seem like there may be two different groupings of this data that follow more predicatble trends, simply, data above the fitted line and data below the fitted line might have better predictive succuess if they could be separated by another variable. 
+
+```{r}
+data4 %>% ggplot(aes(x=x1, y=gdp_per_cap, color=continent)) + geom_point() + ggtitle("alc consumption vs gdp/cap (by continent)") 
+
+# remove europe
+data4 %>% filter(continent != "Europe", continent != "Asia") %>% ggplot(aes(x=x1, y=gdp_per_cap)) + geom_point() + ggtitle("alc consumption vs gdp/cap in americas, africa, oceania") +  geom_smooth(method='lm') + scale_y_log10()
+```
+
+Coloring the plot by continent shows that a significant portion of the outlying data is from Europe and Asia, and by removing those, it *looks* like there is increased correllation, and more importantly a linear model would have more predictive value. Additionally, by scaling gdp_per_cap by log10, it creates a better distribution of values and shows the trend. There are a great number of reasons that could account for this, I'd hazard that the most likely reasons stem from culture and/or production.  
+
+
+Credit to Justine and Alfonso for explaining how to get rmarkdown to add line breaks. I was going nuts trying to figure that out. 
+
+
