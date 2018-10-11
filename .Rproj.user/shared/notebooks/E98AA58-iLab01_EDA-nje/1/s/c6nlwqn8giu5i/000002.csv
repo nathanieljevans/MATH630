@@ -1,0 +1,21 @@
+"0","setwd(""C:/Users/natha/Documents"")"
+"2","The working directory was changed to C:/Users/natha/Documents inside a notebook chunk. The working directory will be reset when the chunk is finished running. Use the knitr root.dir option in the setup chunk to change the working directory for notebook chunks."
+"0","alc <- read_xlsx((""indicator alcohol consumption  20100830.xlsx""),"
+"0","                      sheet = 1) %>% "
+"0","                      clean_names() # highly recommended"
+"0","alc2 <- alc %>%"
+"0","  rename(country = 1) %>% "
+"0","  gather(year, x1, -country) %>% "
+"0","  mutate(year = readr::parse_number(year)) %>% "
+"0","  filter(!is.na(x1))"
+"0","glimpse(alc2)"
+"1","Observations: 411
+"
+"1","Variables: 3
+"
+"1","$ country <chr> ""Russia"", ""Russia"", ""Russia"", ""Russia"", ""Russia"", ""Chile"", ""Ecuador"", ""Greece"", ""Ru...
+"
+"1","$ year    <dbl> 1985, 1986, 1987, 1988, 1989, 1990, 1990, 1990, 1990, 1991, 1992, 1992, 1993, 1993,...
+"
+"1","$ x1      <dbl> 13.31, 10.77, 10.96, 11.57, 12.04, 9.43, 8.40, 12.51, 12.29, 12.67, 12.66, 13.23, 1...
+"

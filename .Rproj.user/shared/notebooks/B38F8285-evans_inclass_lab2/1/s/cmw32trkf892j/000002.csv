@@ -1,0 +1,4 @@
+"0","#crime %>% distinct(region_code) # no region code 20,23"
+"0","model_data <- get_regression_points(crm_lm)"
+"0","happy_data <- model_data %>% filter(ID==20 | ID==23)"
+"0","happy_data"

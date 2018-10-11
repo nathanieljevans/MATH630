@@ -1,0 +1,95 @@
+---
+title: "evans_hw1"
+author: "Nathaniel Evans"
+date: "October 10, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Homework 1
+##Math 530/630 - Fall 2018
+
+Install and load the MASS package in R so that you can use the cats dataset. - Check
+
+####Note that if you have dplyr installed and wish to use dplyr::select, MASS also has a select function that will mask the dplyr version.
+
+Using the cats dataset, we'll explore the difference between covariance and correlation.
+
+```{r load_libraries, echo=TRUE, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(MASS)
+head(cats)
+glimpse(cats)
+# select <- dplyr::select # if you want to override the MASS select function with the dplyr one
+``` 
+
+##Make
+a scatterplot of body weight versus heart weight in this sample of cats, and add the linear
+regression line. What do you see? (hint: comment on linearity of association and strength of that
+association) (See also: http://guessthecorrelation.com). Using the built-in R function cov, calculate the
+covariance of body weight and heart weight in this sample of cats. (hint: use with(cats, cov(arg1,
+arg2)) or cov(cats$arg1, cats$arg2))
+
+```{r cat_scatterplot}
+cats %>% ggplot( aes(x = Bwt, y = Hwt) ) + geom_point() + geom_smooth(method='lm', se=FALSE)
+cov(cats$Bwt, cats$Hwt)
+cor(cats$Bwt, cats$Hwt)
+```
+
+<span style="color:red"> From both the graph and the cov() function we can tell that the variables Bwt and Hwt are highly covariant, the cov() function giving us a .95 covariance value. From my online reading, covariance is dependant on the units that are used and so a normalized metric of this would be more useful. Such as Cor() which gives a .80 value. I see now that this is approached in the next section. </span> 
+
+
+##Convert 
+the units of both body and heart weight from the metric system to the imperial system, using
+the code provided below, and re-make your scatterplot. What changed? What did not change? Also do
+the following:
+. Re-calculate the covariance between body and heart weight in pounds. What do you notice? Does
+it make sense?
+. Using the built-in R function cor, calculate two correlations between body and heart weight- one
+on the raw values in kg and g, respectively, and one using the same measurements after converting
+to pounds.
+. Compare and contrast the two correlations you calculated to the two covariances you have
+calculated.
+
+```{r unit_conversion}
+# convert units for part c
+cats_imperial <- cats %>%
+mutate(bwt_lbs = Bwt * 2.205,
+hwt_lbs = Hwt * 0.0022046)
+
+cats_imperial %>% ggplot(aes(x=bwt_lbs, y=hwt_lbs)) + geom_point() + geom_smooth(method='lm', se=FALSE)
+cov(cats_imperial$bwt_lbs, cats_imperial$hwt_lbs)
+cor(cats_imperial$bwt_lbs, cats_imperial$hwt_lbs)
+
+```
+
+<span style="color:red"> The covariance after changing the units is significantly different, wheras the correllation has stayed the same. This definitively shows that covariance is dependant on the units wheras correllation is unitless. This makes me very wary of using covariance to explain or compare sets of correllated variables. Intuitively, I would have expected the initial value of .9 to represent a very high covariance, and the second (imperial units) covariance of .004 to be excessively small covariance. However, since we know that scaling the units shouldn't change the variance in our data, we know that the different covariances (between units) represent the same correllation, backed up by the cor() function.  </span> 
+
+
+##Finally 
+go back to the original raw measures of body and heart weight (in kg and g, respectively).
+. Transform each variable into z-score form (you may wish to confirm for yourself that the mean =
+0 and sd = 1 for each).
+. Calculate the covariance and the correlation between the two variables in z-score form.
+. Use this example to explain in words how a correlation is different from covariance (hint: do
+you think you want a measure of association between two variables that is sensitive to linear
+transformations? Why or why not? Do either of these two statistics appear to be insensitive to
+linear transformation? If so, look carefully at the formulas and try to explain in words why.)
+$$z-score =  ({x - \bar x}) / s $$
+
+```{r z_scores}
+cats2 <- cats %>% mutate(bwt_z = (Bwt - mean(cats$Bwt))/sd(cats$Bwt), hwt_z = (Hwt - mean(cats$Hwt))/sd(cats$Hwt) )
+cats2 %>% summarize(bwt_mean = mean(bwt_z), bwt_sd = sd(bwt_z), hwt_mean = mean(hwt_z), hwt_sd = sd(hwt_z)) 
+cats2 %>% ggplot(aes(x=bwt_z, y=hwt_z)) + geom_point() + geom_smooth(method='lm', se=FALSE) 
+#cats2 %>% ggplot(aes(x=bwt_z)) + geom_histogram()
+#cats2 %>% ggplot(aes(x=Bwt)) + geom_histogram()
+cov(cats2$bwt_z, cats2$hwt_z)              
+cor(cats2$bwt_z, cats2$hwt_z)
+```
+
+<span style="color:red"> From this excercise, it is clear that the difference in calculation between a correlation, which does not depend on units, and the covariance, which is scaled by the units used, is that the correllation first converts the values to a z-score which centers the data around zero and normalizes the standard deviation (to 1). This is evident because by converting the variables to z-scores before computing the covariance delivers the same value as the correllation function. I would not use covariance to compare two sets of variables, in fact, I would be hesitant to use covariance at all, since it's value can only be interpreted by considering the units used in the calculation and, as seen from my initial reaction to the covariance score (0.9-GOOD! 0.004-BAD!) it can be easily misinterprented. Going forward, I will use correllation (cor() function) when comparing two sets of potential covariates. </span> 

@@ -1,0 +1,1 @@
+"0","happy_data %>% ggplot(aes(x=public_houses, y=criminals, color=as.factor(ID))) + geom_point() + geom_line(aes(x=public_houses, y=criminals_hat))"

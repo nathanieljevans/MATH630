@@ -1,0 +1,118 @@
+---
+title: "evans_inclass_lab_2"
+author: "Nathaniel Evans"
+date: "October 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r} 
+library(moderndive)
+library(tidyverse)
+library(skimr)
+library(readr)
+
+```
+
+```{r}
+crimenames <- c("county", "region_name", "region_code",
+               "criminals", "public_houses", "school_attendance",
+               "worship_attendance")
+
+crime <- read_table(here::here("data", "beerhall.dat"),
+                    col_names = crimenames)
+head(crime)
+```
+
+#SIMPLE LINEAR REGRESSION
+##Part 1
+First “fit” the linear regression model to the data using the lm() function, then apply the get_regression_table() function from the moderndive R package to the model object. Use the output to fill in this formula with y, x, and the intercept and slope coefficients: 
+$$\hat{criminals} = b_0 + b_1{public_houses}$$ 
+
+```{r}
+crime %>% ggplot(aes(x=public_houses, y=criminals)) + geom_point() + geom_smooth(method='lm')
+
+crm_lm <- lm(formula = criminals ~ public_houses, data = crime)
+
+crm_lm %>% get_regression_table()
+```
+
+
+##Part 2
+Interpret the intercept coefficient and the slope coefficient (see here for an example). How do the regression results match up with the results from your exploratory data analysis above?
+
+The estimate corresponds to the coefficients b0 and b1 such that: 
+$$b_0 = 109.34$$
+and 
+$$b_1 = 0.116$$
+
+Which, mathamatically, means that in a land of no public houses there would still be a base population of 109.34 (that poor partial person) but with each additional public house that is then constructed and frequented, an additional 0.116 of a criminal is added. Kind of makes you wonder, which body parts are criminal first? 
+
+#Observed/fitted values and residuals
+
+##Part 1
+What are the observed and fitted values for the Cornwall (ID = 20) and Monmouth regions (ID = 23)? Which region do you think the reverend called “the happiest example of the infrequency of crime”?
+```{r}
+#crime %>% distinct(region_code) # no region code 20,23
+model_data <- get_regression_points(crm_lm)
+happy_data <- model_data %>% filter(ID==20 | ID==23)
+happy_data
+happy_data %>% ggplot(aes(x=public_houses, y=criminals, color=as.factor(ID))) + geom_point()
+```
+
+This graph shows the two extremes demonstrating the reverends opinion. The number of Cornwall criminals is excessively small, as is the number of public houses. In contrast, the number of Monmouth criminals is very high, based on the high number of public houses. The rev. most likely calls Cornwall the “the happiest example of the infrequency of crime” 
+
+
+##Part 2
+In fact, we could argue with the reverend about the happiest example of the infrequency of crime. There are two ways you could define this, and you’ll do with with a filter using the | operator (think: or).
+
+The first way is that the county had the lowest criminals overall. The second is that the county had the lowest criminals given their number of public houses. This would mean that the region has the lowest observed criminals, compared to the fitted value based on predicting criminals from public houses. You’ll need to match the ID column as a row in the original data (you can just do this visually by comparing the tibbles and typing your answers in your narrative- you don’t have to do a join here).
+
+##My argument
+The residual of the Cornwall county is negative meaning the model would predict a much higher value based on that number of public houses. xhat for the monmouth # of public houses is ~120.   
+
+To argue as is expected: 
+```{r}
+
+n_crime <- crime %>% mutate(crim_per_houses = criminals / public_houses) %>% select(county, criminals, public_houses, crim_per_houses)
+
+n_crime %>% arrange((criminals)) %>% head()
+n_crime %>% arrange((public_houses)) %>% head()
+n_crime %>% arrange(desc(crim_per_houses)) %>% head()
+
+
+```
+
+From these 3 tables, its fairly easy to see that while Cornwall is #1 in lowest # of criminals AND # of public houses, it is actually # 4 in criminals / public houses. Meaning that it's not a good example of using public houses to predict criminals. 
+
+
+#Residual analysis
+
+##Part 1
+Perform a residual analysis and look for any systematic patterns in the residuals. Ideally, there should be little to no pattern- why? Does it seem like there is no systematic pattern to the residuals?
+
+```{r}
+model_data %>% ggplot(aes(x=public_houses, y=residual, color=as.factor(ID))) + geom_col() + geom_smooth(method = 'lm')
+
+```
+
+
+From this chart, I cannot discern any obvious systemic pattern in the residuals. 
+
+
+##Part 2
+
+Recreate this density plot of the residuals (hint: ?geom_vline()). Recall that we would like the residuals to be normally distributed with mean 0. Use dplyr to calculate the mean of the residuals- is it (pretty close to) 0? Do you think you have more positive residuals than negative, or vice versa?
+
+```{r}
+model_data %>% ggplot(aes(x=residual)) + geom_density() + geom_vline(aes(xintercept = mean(model_data$residual), color=594)) + geom_vline(aes(xintercept=0, color = 300))
+
+model_data %>% summarize(mean_residue=mean(residual))
+```
+
+
+From this residual density plot, the heteroskedacity and skew doesn't seem outrageous and the mean residual is exceedingly close to 0 which is as to be expected. While the model doesn't have a ton of predictive value, it does seem to apply to all the data fairly well without any systemic biases. Moving forward, I would start to explore other variables that have more predictive value for the criminal variable; education or income would be a good topic to explore next I think. 
+

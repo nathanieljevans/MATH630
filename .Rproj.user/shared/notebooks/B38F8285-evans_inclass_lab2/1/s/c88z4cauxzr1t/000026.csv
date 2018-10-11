@@ -1,0 +1,2 @@
+"0","n_crime <- crime %>% mutate(crim_per_houses = criminals / public_houses) %>% select(county, criminals, public_houses, crim_per_houses)"
+"0","n_crime %>% arrange((criminals)) %>% head()"

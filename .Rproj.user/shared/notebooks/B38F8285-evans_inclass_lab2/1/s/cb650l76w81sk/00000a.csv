@@ -1,0 +1,2 @@
+"0","crm_lm <- lm(formula = criminals ~ public_houses, data = crime)"
+"0","crm_lm %>% get_regression_table()"

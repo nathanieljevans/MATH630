@@ -1,0 +1,92 @@
+---
+title: "in-class Lab#1"
+author: "Nathaniel Evans"
+date: "October 2, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r} 
+library(moderndive)
+library(tidyverse)
+library(skimr)
+library(readr)
+```
+
+
+#GOAL:  Let’s investigate how well we can predict criminals (per 100k population) from the number of public houses (ale/beer houses per 100k population) using simple linear regression
+
+```{r}
+crimenames <- c("county", "region_name", "region_code",
+               "criminals", "public_houses", "school_attendance",
+               "worship_attendance")
+
+crime <- read_table(here::here("data", "beerhall.dat"),
+                    col_names = crimenames)
+head(crime)
+```
+## The Basics 
+###What is the dependent variable?
+criminals 
+
+###What is the independent variable?
+public houses
+
+### formulas 
+$$\hat{criminals} = b_0 + b_1 * {public houses}$$
+
+
+###The “best-fitting” regression line is “best” in that it minimizes what?
+It depends on the error measurement type but for a Least Square Estimator (LSE) the best fit line minimizes the sum of squared errors (SSE) which is define by the equation: 
+$$ SSE = \sum (criminals_i - \hat{criminals_i})^2  $$
+
+
+###Why is this method called “simple linear regression” (as opposed to the method in Chapter 7)?
+The "simple" component refers to only using a single independant variable in the regression, using multiple is possible. The "linear" component refers to the class of functions that is expected/used in fitting. This can be a number of equations including polynomials and trignometric. Non-linear regression would involve fitting to an exponential function.   
+Here is an example of other non-simple linear regression formulas: 
+$$\hat{y} = b_0 + b_1*x + b_2*x^2$$
+
+## EDA
+
+Conduct a new exploratory data analysis, which involves three things:
+
+Looking at the raw values.
+```{r}
+glimpse(crime)
+```
+Computing summary statistics of the variables of interest.
+```{r}
+crime %>% summary()
+```
+Creating informative visualizations.
+```{r}
+crime %>% ggplot(aes(x=public_houses, y=criminals, color=region_name)) + geom_point()
+```
+
+
+Use dplyr to figure out how many counties are in this dataset, and which variable names map onto the independent and dependent variables you identified above.
+```{r}
+crime %>% distinct(county) %>% count()
+```
+
+Use select to select only the independent and dependent variables you identified above, then pipe those variables to the skim function from the skimr package (you should have loaded this package at the top) to see summary statistics for each. Use  dplyr::summarize to calculate the correlation coefficient.
+
+```{r} 
+crime %>% select(criminals, public_houses) %>% skim()
+
+```
+
+
+Recreate the scatterplot below of ale/beer houses per 100K on the x-axis and criminals per 100K population on the y-axis. What can you say about the relationship between public houses and criminals based on this exploration?
+```{r}
+crime %>% ggplot(aes(x=public_houses, y = criminals)) + geom_point() + ggtitle("public houses vs criminals") + geom_smooth(method='lm', se=FALSE)
+```
+
+```{r}
+crime %>% summarize(crime_cor_coef = cor(criminals,public_houses))
+```
+
+Props to Chris Klocke for helping me find the .dat file. 

@@ -1,0 +1,2 @@
+"0","n_rows <- data %>% count()"
+"0","print(n_rows)"

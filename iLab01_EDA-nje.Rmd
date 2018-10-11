@@ -17,8 +17,10 @@ library(knitr) # for kable
 
 library(reprohealth)
 data <- wb_reprohealth %>% mutate(year=parse_number(year))
+
 head(data)
 ```
+
 ## **reprohealth EDA**
 ###How many variables/columns?
 There are 9 variables of types character (3) and numeric (6)  
@@ -32,7 +34,7 @@ n_rows <- data %>% count()
 print(n_rows)
 ```
 ##Which variables are numbers?
-The following variables are numeric of type <dbl> :   
+The following <span style="color:deeppink"> 6 </span> variables are numeric of type <dbl> :   
 * year  
 * edu_gen_parity  
 * gdp_per_cap  
@@ -63,7 +65,7 @@ print(c("distinct regions: ", rgn))
 data$year %>% summary()
 
 ```
-Complete this sentence: "There is one row per." **observation**
+Complete this sentence: "There is one row per." <span style="color:deeppink"> **observation of country fertility related metrics over time** </span>
 ```{r}
 head(data)
 ```
@@ -108,6 +110,17 @@ glimpse(data_jnd)
 ```
 #Part 3 ----------------------
 ### "Your goal during EDA is to develop an understanding of your data. The easiest way to do this is to use questions as tools to guide your investigation.EDA is fundamentally a creative process. And like most creative processes, the key to asking quality questions is to generate a large quantity of questions." 
+
+
+<span style="color:deeppink"> I'm going to add a little bit here to explore the data, initially, like the example does: Visualize Max/Mins and distribution by continent. This violin plot is my new favorite. Especially overlaying a point distribution of the data on top.
+
+
+<span style="color:deeppink"> From this graph, we can see that while europe is by far the highest on average, it has a few countries that don't drink much at all. Additionally, while asia is predominantly non-drinking, there are a few that compete with even the highest of europe and has the most significant range of values. Oceania, has a fairly odd distribution that looks like two separate populations and may be described by the indonesian countries that are more similar to asia and the "western" countries (Australia, NZ, Tazmania) Needs some more exploration to say for sure. Americas have a pretty interestingly tight distribution and Africa has a noticeably significant range of values. 
+
+</span>
+```{r}
+data_jnd %>% filter(!is.na(x1)) %>% group_by(continent) %>% ggplot(aes(x = continent, y = x1, color=continent )) + geom_violin() + geom_point()
+```
 
 
 #task 1
