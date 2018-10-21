@@ -1,0 +1,106 @@
+---
+title: "evans_iLab02"
+author: "Nathaniel Evans"
+date: "October 20, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse) # all the good stuff
+library(readxl) # for reading in xlsx files
+library(janitor) # for clean_names
+library(knitr) # for kable
+library(moderndive) # for getting tables
+library(corrr) # for correlation matrix
+library(skimr) # for skim
+library(GGally) # for ggpairs
+library(broom) # for pulling out model results
+library(rdryad) # to access the API
+library(purrr) # for 1 function: pluck!
+```
+
+```{r data aquisition}
+path_to_xlsx <- dryad_fetch(dryad_files(doi = '10.5061/dryad.7763s/1')) %>% 
+  pluck(1)
+vitd <- read_xlsx(path_to_xlsx, sheet = 1)
+vitd <- vitd %>% 
+  clean_names()
+#glimpse(vitd)
+
+codebook <- read_xlsx(path_to_xlsx, sheet = 2)
+
+lm_vars <- c("sex", "_zhfa", "ageyears", "_25D")
+codebook %>% 
+  filter(Variable %in% lm_vars) %>% 
+  knitr::kable()
+
+lm_data <- vitd %>% select(c("sex", "zhfa", "ageyears", "x25d"))
+
+```
+
+# EDA 
+
+
+```{r EDA}
+glimpse(lm_data)
+ggpairs(data=lm_data)
+
+```
+
+## GGpair analysis  
+Weak inverse correllation x25d and zhfa and age, but significant difference in x25d values between sex so an interaction model may be valuable. x25d exhibits some kurtosis and age seems to have two modes, which deserces some looking into (especially if the modes correllate to male/female - might explain diff in sex x25D and sex data). 
+
+```{r age modality question} 
+lm_data %>% group_by(sex) %>% ggplot(aes(x = ageyears, color=sex)) + geom_density()
+
+lm_data %>% ggpairs(aes(color=sex))
+```
+
+The bimodality doesn't seem to be attributed to sex distribution, I think this is important to explore more. 
+
+```{r}
+lm_data %>% skimr::skim()
+
+```
+<br />
+
+####How many variables/columns? <br />
+We are considering only 4 variables: ageyears, x25d, sex, zhfa
+
+####How many rows/observations? <br />
+There are 537 observations. 
+
+####Which variables are numbers? <br />
+age <int> 
+x25d <float>
+zhfa <float> 
+
+####Which are categorical variables (numeric or character variables with variables that have a fixed and known set of possible values; aka factor variables)? <br />
+sex ["M"/"F"]
+
+####Complete this sentence: "There is one row/observation per." <br />
+school child in thailand 
+
+####What are the correlations between variables? Does each scatterplot support a linear relationship between variables? Do any of the correlations appear to be conditional on the value of a categorical variable (like sex)? <br />
+From initial EDA, the scatterplots do not show an obvious linear correllation however the cor() function shows a slight negative correlation between the variables. sex plays a significant role in mediating the ageyears variable correlation; females show a high correllation between age and x25d. 
+
+
+```{r regression model}
+lm_dataz <- lm_data %>% transmute(sex = sex, age = scale(lm_data$ageyears,center=TRUE, scale=TRUE), hgt_age= scale(lm_data$zhfa,center=TRUE, scale=TRUE), vitD = scale(lm_data$x25d, center=TRUE, scale=TRUE)) 
+
+glimpse(lm_dataz)
+
+vitD_mod <- lm(data=lm_dataz, formula= 'vitD ~ age*sex + hgt_age')
+
+vitD_mod
+
+get_regression_summaries(model=vitD_mod)
+
+get_regression_points(model=vitD_mod)
+
+```
+
+
+

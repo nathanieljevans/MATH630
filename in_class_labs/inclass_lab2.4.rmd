@@ -1,0 +1,204 @@
+---
+title: "evans_inclass_lab_2.4"
+author: "Nathaniel Evans"
+date: "October 11, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(fivethirtyeight) # new to you!
+library(moderndive)
+library(skimr)
+library(tidyverse)
+library(GGally) # new to you!
+
+```
+
+We'll use hate_crimes to demonstrate multiple regression with:
+
+A numerical outcome variable y, in this case average annual hate crimes per 100,000 population, FBI, 2010-2015 (avg_hatecrimes_per_100k_fbi)
+Three possible explanatory variables:
+A first numerical explanatory variable x1: percent of adults in each state 25 and older with at least a high school degree (2009) (share_pop_hs)
+A second numerical explanatory variable x2: each state's income inequality (as measured by the Gini index, 2015) (gini_index)
+A third numerical explanatory variable x3: each state's percent population that voted for Donald Trump (share_vote_trump). At a later stage, we'll convert this variable to a factor.
+
+# EDA 
+
+Recall that a new exploratory data analysis involves three things:
+
+Looking at the raw values.
+Computing summary statistics of the variables of interest.
+Creating informative visualizations.
+General functions we use below- add narrative to interpret each!:
+
+```{r EDA}
+#glimpse(hate_crimes)
+#summary(hate_crimes)
+#hate_crimes %>% count (state) # %>% filter(n>1)
+#hate_crimes %>% distinct(state) # 51 states (includes DC)
+hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, share_pop_hs, gini_index, share_vote_trump) %>% cor()
+hate_crimes %>% ggplot(aes(x= share_vote_trump, y=avg_hatecrimes_per_100k_fbi)) + geom_point()
+
+less_hate <- hate_crimes %>% select(avg_hatecrimes_per_100k_fbi, share_pop_hs, gini_index, share_vote_trump, state) # just variables were worried about
+glimpse(less_hate)
+
+less_hate %>% ggplot(aes(x=avg_hatecrimes_per_100k_fbi)) + geom_histogram()
+less_hate %>% filter(avg_hatecrimes_per_100k_fbi > 9) # DC is the outlier in our histogram
+
+less_hate %>% ggplot(aes(x=gini_index)) + geom_histogram()
+less_hate %>% filter(gini_index > .48) # Conneticut, DC and NY all have high gini indexs (outliers)
+
+less_hate %>% ggplot(aes(x=share_pop_hs)) + geom_histogram()
+
+less_hate %>% ggplot(aes(x=share_vote_trump)) + geom_histogram()
+less_hate %>% filter(share_vote_trump < 0.2) # DC is the outlier - almost everyone did NOT vote for trump
+
+less_hate2 <- less_hate %>% 
+  mutate(
+    cat_trump = case_when(
+      share_vote_trump < .5 ~ "less than half", 
+      TRUE ~ "more than half"
+      )) %>% 
+  mutate(cat_trump = as.factor(cat_trump)) %>% 
+  select(-share_vote_trump)
+```
+
+
+## eda narrative 
+There is some interesting components to this data. First, the correllation matrix shows some covariance between these variables which is seomthing to keep in mind when creating the mlm. Second, the majority of data follow similiar trens with the exception of D.C. which is a significant outlier in almost all of the data, because of this, I would be inclined to remove this from my data before fitting a model.   
+Oh, there were questions:  
+How many states are here? Are they all "states"?   
+There are 51 state variables, DC is included
+
+How many rows do we have per state? Is there ever more than 1 row per state?  
+No there is only 1 entry per state. 
+
+
+#EDA. part 2
+
+I explored the correllation above. 
+
+```{r ggally}
+
+less_hate2 %>% select(-state) %>% ggpairs(aes(color=cat_trump))
+
+```
+
+## narrative 2 
+
+WOW! This is my new favorite function. Careful though, the colors are non-intuitive "blue" states (cat_trump=0) are red. This does a fantastic job of visualizing the data for further exploration.   
+
+
+
+# Part 3, MLM 
+Multiple regression models (??? 20 min)
+Do the following:
+
+Fit a multiple regression model and get the regression table. You'll be assigned one of the following models:
+1) Two numerical predictors with a + (gini_index and share_pop_hs)
+2) One numerical / one categorical with parallel slopes (gini_index and cat_trump)
+3) **One numerical / one categorical interaction model (gini_index and cat_trump)**
+Two numerical predictors with a * (gini_index and share_pop_hs)
+
+
+```{r, which_model?}
+letter2num <- function(x) {utf8ToInt(x) - utf8ToInt("a") + 1L}
+my_name <- "Nate E"
+set.seed( sum( letter2num( my_name)))
+sample(1:4,1)
+```
+
+$$ hate\_crimes = B_0 + B_1 * cat\_trump + B_2 * share\_pop\_hs $$
+
+```{r mlm}
+my_mod <- lm(data = less_hate2, formula = avg_hatecrimes_per_100k_fbi ~ cat_trump + share_pop_hs)
+my_mod_int <- lm(data = less_hate2, formula = avg_hatecrimes_per_100k_fbi ~ cat_trump * share_pop_hs)
+single_mod_hs <- lm(data = less_hate2, formula = avg_hatecrimes_per_100k_fbi ~ share_pop_hs)
+single_mod_trump <- lm(data = less_hate2, formula = avg_hatecrimes_per_100k_fbi ~ cat_trump)
+reg_tab <- get_regression_points(my_mod)
+reg_tab_int <- get_regression_points(my_mod_int)
+reg_tab_int
+reg_tab
+summary(my_mod)
+summary(single_mod_hs)
+summary(single_mod_trump)
+summary(my_mod_int)
+reg_tab %>% ggplot(aes(x=share_pop_hs, y=avg_hatecrimes_per_100k_fbi, color=cat_trump)) + geom_point() + geom_point(data=reg_tab, aes( x=share_pop_hs, y=avg_hatecrimes_per_100k_fbi_hat, color=cat_trump), shape=24)
+
+reg_tab_int %>% ggplot(aes(x=share_pop_hs, y=avg_hatecrimes_per_100k_fbi, color=cat_trump)) + geom_point() + geom_point(data=reg_tab_int, aes( x=share_pop_hs, y=avg_hatecrimes_per_100k_fbi_hat, color=cat_trump), shape=24)
+```
+
+
+```{r}
+hate_mod <- lm(avg_hatecrimes_per_100k_fbi ~ 
+                   gini_index + cat_trump, data = less_hate2)
+hate_diag <- broom::augment(hate_mod, data = less_hate2) 
+glimpse(hate_diag)
+
+hate_diag %>% 
+  select(state, .hat) %>%
+  arrange(desc(.hat))
+```
+```{r}
+hate_diag <- hate_diag %>% 
+  mutate(.ext.resid = rstudent(hate_mod)) # add 
+hate_diag %>% 
+  select(state, .std.resid, .ext.resid) %>% 
+  arrange(desc(.ext.resid)) %>% 
+  slice(1:5)
+
+hate_diag %>% ggplot(aes(x=.std.resid, y=.ext.resid)) + geom_point() + geom_smooth(method='lm')
+# studentized (named after someone) means divide by standard error 
+
+hate_diag %>% ggplot(aes(x=.hat, y=.ext.resid)) + geom_point()
+
+# for large dataset (n>15)
+# outliers are > 2*mean
+
+# for small dataset 
+# outliers are > 3*mean
+
+hate_diag <- hate_diag %>% mutate(stud_resid_diff=abs(.ext.resid-.std.resid))
+hate_diag %>% ggplot(aes(x=stud_resid_diff))+ geom_histogram(bins=50)
+
+# |externally studentized residual| > 2 characterizes an outlier
+
+#DFBETAS - tells you which coefficients are impacted 
+
+# ggfortify::autoplot will give you condensed residual analysis - brilliant
+```
+
+
+
+```{r table1, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+
+tab <- "
+|X|Multiple linear model (addition)|  mlm interaction   |   single model: pop_hs     | single model:cat_tr|
+|-------------------|:-----------:|:-------------------:|:--------------------------:|-------------------:|
+|int.                |  -2.5      |         -3.7        |                -4.8        |         2.76       |
+|cat (more_than_half)|  -0.64     |          1.25       |                 X          |         -0.7359    |
+|share_pop_hs         |  5.9      |          7.36       |                 8.3        |          X         | 
+|more_than_half:share_pop_hs| X    |          -2.171    |                 X          |          X         |
+"
+cat(tab)
+```
+
+Note to self... making tables manually is a real pain. 
+
+The single and multiple linear models have clear distinctions but there are also several similarties worth noting. Excluding the intercept, both variables have the same sign in both multiple and single variable models, which intuitively makes sense. Also, the magnitude of both variables in single lm were greater than the magnitude of the coefficient in the multiple lm. 
+
+Explaining my multiple lm (addition): For every share_pop_hs increase in 1, there are 5.9 more hate crimes per 100k predicted and in states where more than half of the population voted for trump, the model predicts -0.64 fewer hate crimes per 100k. 
+
+Explaining my mlm (interaction model): The interesting distinction here is that the slope defined by the share_pop_hs variable is actually different depending on the cat_trump variable; In this case, the blue trianlge slope (share_pop_hs prediction slope for redish states) is 2.7 less than the red triangle slope (share_pop_hs prediction slope for blue states). An oddity about this interaction model is that it lists the cat_trump:more than half coefficient as being positive but the regression points show that it's actually negative, as in the other models. 
+
+Interpreting the validity or usefulness of my model, I'd be very hesitant since all 3 models (multiple and both single lm) have p values well above 0.05 and therefore the null hypothesis can not be thrown out. 
+
+This is a very interesting model, as I would have expected the data to do the exact opposite then it currently shows. I would have expected fewer hate crimes in more educated states (and we see more!) and I would have expected redish states (those who more than half voted for trump) to have more hate crimes then those who did not (opposite again!). 
+
+Thinking ahead, I can see how residual analysis may get pretty complex when the dimensionality of our model increases. For 2 variables, its envisionable to look at a 3d column chart to visualize systemic trends, but beyond 2 variables that would require new techniques I think... In fact, even in our interaction model with 2 variables there are 3 coefficients, I'm not totally sure how to approach even that residual analysis. 
+
+
+
+
