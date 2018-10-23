@@ -62,6 +62,7 @@ The bimodality doesn't seem to be attributed to sex distribution, I think this i
 
 ```{r}
 lm_data %>% skimr::skim()
+lm_data %>% summary()
 
 ```
 <br />
@@ -88,19 +89,110 @@ From initial EDA, the scatterplots do not show an obvious linear correllation ho
 
 
 ```{r regression model}
-lm_dataz <- lm_data %>% transmute(sex = sex, age = scale(lm_data$ageyears,center=TRUE, scale=TRUE), hgt_age= scale(lm_data$zhfa,center=TRUE, scale=TRUE), vitD = scale(lm_data$x25d, center=TRUE, scale=TRUE)) 
+#lm_dataz <- lm_data %>% transmute(sex = sex, age = scale(lm_data$ageyears,center=TRUE, scale=TRUE), hgt_age= scale(lm_data$zhfa,center=TRUE, scale=TRUE), vitD = scale(lm_data$x25d, center=TRUE, scale=TRUE)) 
 
-glimpse(lm_dataz)
+#glimpse(lm_dataz)
 
-vitD_mod <- lm(data=lm_dataz, formula= 'vitD ~ age*sex + hgt_age')
+vitD_mod <- lm(data=lm_data, formula= 'x25d ~ ageyears*sex + zhfa')
 
 vitD_mod
 
 get_regression_summaries(model=vitD_mod)
 
-get_regression_points(model=vitD_mod)
+model_pts <- get_regression_points(model=vitD_mod)
+
+
 
 ```
 
+## Regression Model <br /> 
+My regression model is described (names altered) as: 
+$$ VITD = -3.1*AGE - 16.8*SEX_m - 1.73*zHFA + 3.0*AGE*SEX_m + 96.9$$
 
 
+This can be described in a variety of ways, and since we are using a amalygam of units (z-score, years, boolean) it should be carefully described to understand how it's describing the data. In this model, for each year of age, the vitD metric (x25D) decreases by 3.1 BUT the age:sex interaction shows that this is only applicable for females. Age only negligibly affects the vitD metric. The height for age (zhfa) zscore shows that for every increase in z score, the vitD metric decreases by 1.73. It is important to note that since zhfa has been centered, some of the data is negative, and therefore some of the zhfa terms will be net positive. Mathamatically this makes sense, but for units (like a ratio) that can't intuitively be understood as a negative number, its worth recognizing. Lastly, the data shows that males have a lower vitD metric; if you are male then you will have -16.8 vitD that a female doppleganger would have. The intercept is, perhaps the most difficult to grasp intuitively, but I think it's fairly easily described when you recognize the bounds of this model. The bounds of the data are: 
+
+
+VAR | MIN | MAX
+----|-----|----
+AGE | 6.2 |14.0
+zhfa|-3.4 |1.8
+x25D| 36  |127
+
+With these bounds in mind, the intercept is the offset that best fits the data while the correllation coefficients determine how the data behaves within these bounds. So, as an example, for a child who is 6.2 years old, has zhfa of -3.4, the intercept compensates to bring the x25D value to within the fitted range. It should NOT be interpreted that for a baby of 0, or a child with ridiculous height for age value (like zero or negative ratio before zscore conversion)that this model predicts a x25D value, this model is ONLY valuable inside the bounds of our data. 
+
+
+# RESIDUAL ANALYSIS 
+
+
+```{r}
+#model_pts
+model_pts %>% ggplot(aes(residual)) + geom_histogram(bins=20) + facet_wrap(facets=vars(sex))
+model_pts %>% ggplot(aes(x=sex, y=residual, color=sex)) + geom_violin() + geom_point() 
+model_pts %>% ggplot(aes(x=ageyears, y=residual, color=sex)) + geom_col() + geom_smooth()
+model_pts %>% ggplot(aes(x=zhfa, y=residual)) + geom_col() + geom_smooth()
+#model_pts %>% select(sex) %>% filter(sex=='M') %>% count()
+
+```
+
+## Residual analysis discussion 
+
+The residual analysis shows a decently well fit model. The residual histogram faceted by sex shows normal distribution with perhaps slightly high kurtosis (how can we know for sure? - can we overlay a normal distribution curve on this?). The violin plots show expected distributions with slightly enhanced range of residuals in Males. The means and standard deviation in these two populations were near identical. The zhfa vs residual plot shows no systemic trends. The age vs residual plot, colored/grouped by sex is perhaps the most interesting plot, as it does show a slight trend indicative of a x^4 or x^5 (depending on bounds) polynomial. This trend is present in both males and females. This implies that the model does not effectively represent the age component. 
+
+# Outlier Analysis
+Examine points with high leverage and discrepancy (use the externally studentized residuals as the index for discrepancy). Remember that these statistics are not in the output of the moderndive::get_regression_points() function- you'll want to use  broom::augment() and rstudent instead.
+
+```{r outliers}
+diag <- broom::augment(vitD_mod, data = lm_data)
+diag %>% select(sex,zhfa,ageyears,x25d,.hat) %>% arrange(desc(.hat)) %>% head()
+glimpse(diag)
+
+k <- 3 # age, zhfa, sex, sex*age? # <------------------- LEVERAGE
+mean_hat <- (k + 1)/nrow(lm_data)
+mean_hat <- mean(diag$.hat)
+# "large" samples
+diag %>% 
+  select(sex,zhfa,ageyears,x25d,.hat) %>%
+  filter(.hat > (2*mean_hat))
+
+diag %>% ggplot(aes(x=ageyears,y=.hat, color=zhfa)) + geom_point() + facet_wrap(facets=vars(sex)) + geom_abline(slope=0, intercept=mean_hat)
+# plot .hat vs ... what? 
+
+
+# discrepancy
+diag <- diag %>% 
+  mutate(.ext.resid = rstudent(vitD_mod)) # add 
+
+# expect 5% are >2 --- remember >2 is considered an OUTLIER
+diag %>% 
+  select(sex,zhfa,ageyears,x25d, .std.resid, .ext.resid) %>% 
+  arrange(desc(.ext.resid)) %>% 
+  slice(1:5)
+
+#diag %>% filter(.ext.resid > 2) %>% nrows() / nrows(diag)
+```
+
+##How many observations would you expect to have high discrepancy in this sample?</br>
+Expect 5% to be greater than 2. 
+
+##You may want to account for how many females versus males you would expect</br>
+
+
+##Do you see any observations that have both high leverage and discrepancy?</br>
+
+
+##Do any points that are either high leverage or high discrepancy also have high influence on the regression estimates, as measured by Cook's distance?</br>
+
+
+##Would you exclude any observations from your model? Justify your answer either way.</br>
+
+
+##In general, would you say the overall model fit is better for females or males? Why or why not?</br>
+
+
+
+
+
+
+
+  
