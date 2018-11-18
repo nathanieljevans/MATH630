@@ -1,0 +1,102 @@
+---
+title: "evans_hw3"
+author: "Nathaniel Evans"
+date: "November 10, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+
+#Homework 3
+##Math 630
+
+
+####The longitudinal study Bone mass is recovered from lactation to postweaning in adolescent mothers with low calcium intakes examined total-body bone mineral content of young mothers during breast feeding and then in the postweaning period. We want to test the hypothesis that mothers gained more than 25 grams of bone mineral content in the postwearning period. The data for 10 mothers is provided below; 
+
+###use a significance level of 0.05. The column bf stands for the first measurement (during breastfeeding).
+
+$$\alpha = 0.05 $$
+
+
+#### stands for the second measurement (during postweaning period). All values are in grams of bone density.
+
+###a. State the null and alternative hypotheses. </br> 
+$$H_A : Adolescent\ mothers\ gain\ 25\ grams\ or\ more\ of\ bone\ mineral\ content\ in\ the\ postweaning\ period \\ H_0 : Adolescent\ mothers\ gain\ less\ than\ 25\ grams\ of\ bone\ mineral\ content\  $$
+
+###b. First, do the test wrong: use an independent samples t-test, which ignores the paired nature of the dependent variables here, using the t.test function in R assuming equal variances. What would you conclude?</br> 
+$$INDEPENDANT\ T-TEST\\t = 0.44948\\ degrees\ of\ freedom = 18\\ p_{value} = 0.3292$$
+From this independant samples t-test, we would conclude that there is not a significant separation of population means that let us confidently reject the null hypothesis. Additionally, it is worth explaining that we have 18 degrees of freedom because we have two populations (thus 1 data from each population is fixed) with 10 data in each, so 2*10-2 -> 18. 
+
+###c. Now, do the test right: use a dependent samples t-test (also known as a paired t-test), using the t.test function in R. Do you change your conclusions? Explain why or why not. In your discussion, you must reference the degrees of freedom of each test.</br> 
+$$PAIRED\ T-TEST\\t = 2.4575\\degrees\ of\ freedom = 9\\p_{value} = 0.01815$$ 
+From the paired samples t-test results, I would concluded that there is ample justification to reject the null hypothesis given our alpha of 0.05 and even correcting for multiple tests run (p/2->0.025). The degrees of freedom are noticeably different, 18 dof as independant samples but only 9 dof as paired samples. This is because by pairing the samples, we merges the two populations, so it can now be thought of as 10 data representing differences, and therefore only 1 mean (mean change between bf and pw). Our degrees of freedom can be understood as 10 (pop size) - 1 (fixed pts) = 9 dof. Intuitively, these t-test comparisons makes sense because, when looking at the overlaid histograms (below) of the two populations we see almost no distinctive divergences, however, when we compare each mothers bf and pw we see that the difference between bf and pw is always positive.  
+
+
+```{r}
+bones <- data.frame(mother=1:10,
+bf=c(1928, 2549, 2825, 1924, 1628, 2175, 2114, 2621, 1843, 2541),
+pw=c(2126, 2885, 2895, 1942, 1750, 2184, 2164, 2626, 2006, 2627))
+# Remember, the two-sample test is inappropriate.
+t.test(bones$pw, bones$bf, mu=25, alternative="greater", var.equal = TRUE) #inaccurate! why? dependant on patient diff, not two independant populations 
+# this is the right test
+t.test(bones$pw, bones$bf, mu=25, paired = TRUE, alternative="greater")
+
+bones %>% ggplot() + geom_histogram(aes(x=bf, fill ='red', alpha=0.25), bins=15) + geom_histogram(aes(x=pw, fill = 'blue', alpha = 0.25), bins=15)
+```
+
+##2. Your office mate ran an experiment with N=50 to test the hypothesis that her sample would have a mean different from the population mean, µ=0, previously found by her advisor. She conducted a one-sample t test with ??=.05 (two-tailed), and reported the 95% confidence interval for µ of variable X is (8.979, 10.349). Note which of the following must also be true:</br> 
+
+###a. She rejected her null hypothesis.</br>
+True. Since her confidence interval does not include the null population mean, she likely rejected the null hypothesis, especially with such a wide margin. 
+
+###b. The t-statistic based on her sample was greater than 2.01.</br> 
+False. Since her p-value is going to be less than 0.05, we can likewise conclude that the t-statistic is less than 2.01 since a p-value of 0.05 -> t-statistic of 2.01. 
+
+###c. The p value for her t-statistic was less than her ??-level.</br> 
+True. Since our 95% confidence interval does not include the null population mean, we can conclude that the p-value is less than 0.05, although, since we're performing a two-tailed t-test, for it to be statistically significant based solely on the confidence interval, the p-value would need to be less than 0.025. 
+
+###d. Her degrees of freedom were 51.</br> 
+False. Her DOF should have been 49 since she had a single population of 50 and therefore only one fixed data to defin the mean. (50-1 = 49)
+
+###e. Her sample mean of X was 9.664. </br>
+```{r}
+(10.349 - 8.979)/2 + 8.979
+```
+True. We know this because the confidence interval is centered around her population mean. 
+
+###f. Her sample mean of X was 5.664.</br> 
+False. See above, plus, it's outside of the confidence interval, which wouldn't make any sense. 
+
+##3. Suppose that the readings of a laboratory scale are normally distributed with unknown mean µ and standard deviation ?? = 0.01 grams. To assess the accuracy of the laboratory scale, a standard weight that is known to weigh exactly 1 gram is repeatedly weighed a total of N = 50 times. Let x¯ = 0.998 be the average of the 50 readings. What is the 95% confidence interval for µ?</br>
+DOF = 49 
+
+$$ For\ large\ samples,\ n>30 \\ \sigma_{\bar{x}} = \frac {\sigma} { \sqrt{n} } \\ ------ \\\bar{X} \pm \frac{1.96 \sigma} { \sqrt{n}} $$
+```{r} 
+C_upper <- 0.998 + 1.96*0.01/(50**0.5)
+C_lower <- 0.998 - 1.96*0.01/(50**0.5)
+c(C_lower, C_upper)
+
+```
+
+
+###This result means leads to the statement:  </br>  
+#### The readings of this laboratory scale measuring a 1.0 gram weight is 95% likely to be between 0.995g and 1.00008g.</br>
+
+
+##References </br> 
+[good CI review](http://sphweb.bumc.bu.edu/otlt/MPH-Modules/BS/BS704_Confidence_Intervals/BS704_Confidence_Intervals_print.html)  
+
+[review of md links...kinda meta](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)  
+
+[how to figure out latex symbols](http://bfy.tw/KnlE)  
+
+
+
+
+

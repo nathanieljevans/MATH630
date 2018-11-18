@@ -1,0 +1,176 @@
+---
+title: "Lab4-3_inclasslab"
+author: "Nathaniel Evans"
+date: "November 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(infer)
+library(skimr)
+
+```
+
+
+
+```{r}
+stars <- c(84, 57, 63, 99, 72, 46, 76, 91, rep(NA, 4))
+plain <- c(81, 74, 56, 69, 66, 62, 69, 61, 87, 65, 44, 69)
+sneetches <- data.frame(stars, plain)
+sneetches_tidy <- sneetches %>%
+  gather(group, SSI, factor_key = TRUE) %>%
+  filter(!is.na(SSI))
+sneetches_tidy
+
+```
+
+
+```{r}
+sneetch_plot <- ggplot(sneetches_tidy, aes(x = group, 
+                                           y = SSI)) + 
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(position = position_jitter(height = 0, width = 0.2), 
+              fill = "lightseagreen", 
+              colour = "lightseagreen", 
+              alpha = 0.75, 
+              size = 4, 
+              na.rm=TRUE)
+suppressWarnings(print(sneetch_plot))
+```
+
+
+```{r}
+mean_diff <- sneetches_tidy %>% 
+  specify(SSI ~ group) %>% 
+  calculate(stat = "diff in means", 
+            order = c("stars", "plain")) 
+mean_diff
+```
+
+
+```{r}
+set.seed(2018)
+sn1 <- sneetches_tidy %>% 
+  specify(SSI ~ group) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1, type = "permute")
+sn1
+```
+
+```{r}
+skim_with(numeric = list(hist = NULL))
+
+# original mean
+skim(sneetches_tidy)
+```
+
+
+```{r}
+# original means by group
+sneetches_tidy %>% 
+  group_by(group) %>% 
+  skim()
+```
+
+```{r}
+# resample mean
+skim(sn1)
+```
+
+
+```{r}
+# resampled means by group
+sn1 %>% 
+  group_by(group) %>% 
+  skim()
+```
+
+```{r}
+choose(20, 8)
+```
+
+```{r}
+set.seed(1980)
+null_distn <- sneetches_tidy %>% 
+  specify(SSI ~ group) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "diff in means", 
+            order = c("stars", "plain"))
+
+```
+
+
+```{r}
+null_distn %>% 
+  visualize()
+```
+
+```{r}
+mean_diff_number <- mean_diff %>% 
+  pull(1)
+
+(pvalue <- null_distn %>%
+  get_pvalue(obs_stat = mean_diff, direction = "greater"))
+```
+
+
+```{r}
+# same as...
+null_distn %>% 
+  count(val = stat >= mean_diff_number) 
+159/(841+159)
+```
+
+```{r}
+boot_sneetch_ci <- sneetches_tidy %>% 
+  specify(SSI ~ group) %>% 
+  #hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "bootstrap") %>% 
+  calculate(stat = "diff in means", 
+            order = c("stars", "plain")) %>% 
+  get_ci()
+
+boot_sneetch_ci
+```
+
+
+```{r}
+#see ci
+null_distn %>% 
+  visualize(endpoints = boot_sneetch_ci, 
+            direction = "between")
+
+```
+
+
+
+##The question to ask yourself when looking at this plot is: is 0 in my 95% confidence interval? If it is, then a difference of 0 is plausible, and I cannot reject the null hypothesis. </br> 
+
+
+Zero IS within the confidence interval, so we cannot reject the null hypothesis. 
+
+
+
+
+
+
+## my reiteration </br> 
+
+The general idea here is that, for a two population set of data, one measure of stat measure significance is a permutation test wherein the metric associated with each population has the labels (population identity) shuffled (while maintaining sample sizes). This is done for all (or many) of the sample permuations and creates a distribution of the data. Our population stat metrics can then be overlaid or compared to this to see where it falls in the full data distribution. If the sub-set of data that represents one population is significantly outside the expected values of the full dataset, then it can be assumed to be significantly different. Alternatively, if it is not, then the data differences may have been due to sampling randomness. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

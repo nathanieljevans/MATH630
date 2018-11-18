@@ -1,0 +1,100 @@
+---
+title: "HW2"
+author: "Nathaniel Evans"
+class: "MATH630"
+professor: "Rebecca Lunsford"
+date: "October 31, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tibble)
+library(ggplot2)
+```
+
+### references
+#### This was really useful for latex symbols: </br>
+http://www.rpi.edu/dept/arc/training/latex/LaTeX_symbols.pdf
+
+
+
+
+##1. A coin is tossed three times and the sequence of heads and tails is recorded.</br>
+###a. List the sample space.</br>
+$$\Omega \ = [HHH,HHT,HTH,THH,TTH,THT,HTT,TTT]$$
+
+
+###b. List the elements that make up the following events:
+####1. A = at least two heads;</br>
+$$ A_{HH} = [HHH, HHT, HTH,THH] $$ 
+
+
+####2. B = the first two tosses are heads;</br> 
+$$ B_{HHX} = [HHH, HHT] $$ 
+
+
+####3. C = the last toss is a tail.</br> 
+$$ C_{XXT} = [HHT,THT,HTT,TTT] $$ 
+
+
+###c. List the elements of the following events:
+####1. complement of A,</br> 
+$$ A^C = \Omega - A = [TTH, THT, HTT, TTT]  $$
+
+
+####2. A ??? B, intersection 
+$$ A \cap B = B = [HHH, HHT] \therefore B \in A $$
+
+
+####3. A ??? C., union 
+$$ A \cup B = A = [TTH,THT,HTT,TTT] $$
+
+
+##2. In a city, 65% of people drink coffee, 50% drink tea, and 25% drink both.
+75% of people only drink either coffee or tea 
+50% of people do NOT drink tea
+35% of people do NOT drink coffee
+
+$$ P_{coffee} = 0.65 ,  P_{tea} = 0.5 , P_{both}= 0.25$$ 
+I'm assuming that all people who drink coffee and tea (both) will also be in either the coffee set or the tea set. 
+
+###a. What is the probability that a person chosen at random will drink at least one cup of coffee or tea?
+This is asking for the union of coffee and tea and since we know A_coffee and B_tea cannot be disjoint (since their probabilities sum to greater than 1) then P(coffee or tea) = P(A) + P(B) - P(AB) 
+$$P_{COF-or-TEA} = P_{coffee} + P_{tea} - P_{both} = 0.9  $$ 
+
+
+###b. Will drink neither?
+The is asking for the complement of P(C) (Let C = coffee-or-tea)
+$$\Omega\ = C + C^c => 1 = P_C + P_{C^c} = 0.9 + P_{C^c} => P_{C^c} = 1 - 0.9 = 0.1 $$
+
+
+###3. In this problem, we'll explore quantile-quantile (Q-Q) plots. A quantile is the proportion of cases we find below a certain value, calculated from the inverse of the cumulative distribution function (CDF) of a random variable, X. The pth quantile of X is the value qp such that P(X ??? qp) = p. In other words, p is the amount of area under the density curve of X that is to the left of qp. So the smallest observation in X corresponds to a probability of 0 and the largest to a probability of 1. A Q-Q plot displays quantiles of one distribution against quantiles of another. What this means is that the data are ranked and sorted. A normal Q-Q plot displays quantiles of the normal distribution on the x-axis against quantiles of the empirical (i.e., the observed) distribution on the y-axis. A straight line is typically plotted through the points corresponding to the 1st and 3rd quantiles of each variable. If the empirical data is normally distributed, all the points on the normal Q-Q plot will form a perfectly straight line.
+####a. Draw a random sample of size n = 15 from N(0, 1) and plot both the normal quantile plot and the histogram. Do the points on the quantile plot appear to fall on a straight line? Is the histogram symmetric, unimodal, and mound-shaped? Do this several times.</br>
+Points on the quantile plot do appear to fall on a straight line, the histogram depends vastly on the number of bins you choose but with a bins of 10, the histogram looks asymetric, multimodal and showing no significant trend. 
+
+```{r}
+x <- as_tibble(rnorm(15)) # draw random sample of size 15 from N(0,1)
+ggplot(x, aes(sample = value)) +
+stat_qq() +
+stat_qq_line()
+
+ggplot(x, aes(x = value)) + geom_histogram(bins=10)
+```
+
+####b. Repeat part(a) for of size n = 30, n = 60, and n = 100. </br> 
+
+```{r}
+
+for (num in c(30,60,100,1000)){
+  x <- as_tibble(rnorm(num))
+  print(ggplot(x, aes(sample = value)) + stat_qq() + stat_qq_line()) + ggtitle(paste("qq plot: ",num))
+  print(ggplot(x, aes(x=value)) + geom_histogram(bins=100)) + ggtitle(paste("hist: ", num))
+}
+```
+
+####c. What lesson do you draw about using graphs to assess whether or not a data set follows a normal distribution? </br>
+The sampling does seem to follow a normal distribution because as the number of samples taken increases, the distribution looks more and more normal. This is especially apparent when 1000 samples are taken, the histogram looks far more normal then the other histograms. However, it is equally important to adjust your graph to take into account skewed representations such as bin size, granularity of the data, or small sample set biases. 
+
+

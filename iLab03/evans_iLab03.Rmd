@@ -1,0 +1,248 @@
+---
+title: "iLab3: Comparing Means"
+author: "Nathaniel Evans"
+date: "November 12, 2018"
+output:
+  html_document: 
+    theme: flatly 
+    highlight: kate
+    toc: true
+    toc_depth: 2
+    toc_float : true
+    smooth_scroll: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(infer)
+library(skimr)
+library(broom)
+library(GGally)
+```
+
+
+#Overview 
+
+## Data: [csv](https://raw.githubusercontent.com/apreshill/ohsu-basic-stats/master/data/fishermen_mercury.csv)
+
+## Paper: [Science Direct](https://www.sciencedirect.com/science/article/pii/S0269749199002614?via%3Dihub#TBL2)
+
+## Codebook: 
+
+###Variables in this dataset include: 
+####Fisherman indicator (fisherman)
+####Age in years (age)
+####Residence Time in years (restime)
+####Height in cm (height)
+####Weight in kg (weight)
+####Fish meals per week (fishmlwk)
+####Parts of fish consumed:0=none, 1=muscle tissue only, 2=mt and sometimes whole fish, 3=whole fish (fishpart)
+####Methyl Mercury in mg/g (methyl_mercury)
+####Total Mercury in mg/g (total_mercury)
+
+##Research Question
+###**Do fishermen have different levels of total mercury than non-fishermen?**
+
+# EDA 
+#### Honestly, I did a significant amount of EDA the last time using this dataset, so I'm going to leave filling out the EDA to the revision portion. 
+## Download, import data
+#### $curl https://raw.githubusercontent.com/apreshill/ohsu-basic-stats/master/data/fishermen_mercury.csv >> fisherman_data.csv
+
+```{r}
+mercury <- read_csv("fisherman_data.csv",
+                    col_types = cols(
+                      fisherman = col_factor(levels = NULL))
+                    )
+```
+
+##Looking at the raw values.
+```{r}
+mercury %>% glimpse()
+
+```
+
+
+##Computing summary statistics of the variables of interest.
+```{r}
+mercury %>% skim()
+
+summary(mercury)
+
+mercury %>% filter(fisherman==1) %>% summary()
+
+mercury %>% filter(fisherman==0) %>% summary()
+```
+
+
+##Creating informative visualizations.
+
+```{r, message=FALSE}
+ggpairs(mercury)
+
+```
+
+# Check Conditions</br>  
+
+####Remember that in order to use the short-cut (formula-based, theoretical) approach, we need to check that some conditions are met. The infer package does not automatically check conditions for the theoretical methods to work. In order for the results of the t-test to be valid, three conditions must be met:
+
+##Independent observations in both samples </br>     
+<span, color='red'> Each observation is independant of one another. An example of dependant observations would be cortisol levels before and after pregnancy. </span>
+##Nearly normal populations OR large sample sizes (n???30)  </br>
+<span, color='red'> We have large sample sizes: 100 fisherman, 35 non-fisherman</span>
+##Independently selected samples
+<span, color='red'> Two know that our observations are independant in both populations, we need to ask the question, how was the data curated? If the data was self-reported, misrepresentative location sampling or misrepresentative temporal sampling then there may be biases that make our population's observations dependant on eachother. For this dataset, since we know nothing about the data aquisiton methods, we will assume that the observations are independant </span>  
+##For this lab, we'll also assume that the variance in the response/outcome variable is the same for both groups </br>
+<span, color='red'> What range of variance is considered 'the same' ? </span>
+
+
+## t-test for two independant samples 
+
+###Z-Score Formula 
+$$Z = \frac{x-\mu}{\sigma} $$
+
+### T-statisitc Formula 
+$$ T = \frac{ (\bar{x_1} - \bar{x_2}) - (\mu_1 - \mu_2) }{s_p \times \sqrt{\frac{1}{n_1} + \frac{1}{n_2}}} $$
+
+$$ S_p = \sqrt{\frac{(n_1-1) \times s_1^2 + (n_2-1) \times s_2^2} {n_1 + n_2 -2}} $$
+
+###"A t-value of 0 indicates that the sample results exactly equal the null hypothesis. As the difference between the sample data and the null hypothesis increases, the absolute value of the t-value increases."
+
+### BUT under null hypthesis mu1-mu2 = 0
+
+## Test Statistic
+```{r}
+# n1 is non-fisherman, n2 is fisherman 
+n1 <- mercury %>% filter(fisherman==0) %>% nrow()
+n2 <- mercury %>% filter(fisherman==1) %>% nrow()
+s1 <- (mercury %>% filter(fisherman==0))$total_mercury %>% sd()
+s2 <- (mercury %>% filter(fisherman==1))$total_mercury %>% sd()
+
+Sp = sqrt( ((n1-1)*s1^2 + (n2-1)*s2^2)/(n1+n2-2))
+
+xbar1 <- (mercury %>% filter(fisherman==0))$total_mercury %>% mean()
+xbar2 <- (mercury %>% filter(fisherman==1))$total_mercury %>% mean()
+
+T = (xbar1 - xbar2) / (Sp * sqrt( (1/n1) + (1/n2) ))
+
+Sp 
+T 
+```
+### Why is my Test Statistic negative? did I misinterpret xbar and mu? 
+
+```{r}
+upper_tcrit <- 0.025 # TWO TAIL; 0.05 / 2
+test_stat<- mercury %>% 
+  specify(total_mercury ~ fisherman) %>% 
+  hypothesize(null = "independence") %>% 
+  calculate(stat = "t", order = c(1,0))
+#test_stat
+
+test_stat %>%  visualize(method = "theoretical", 
+            obs_stat = upper_tcrit, 
+            direction = "both") # gives us shading
+```
+
+## Observed Effect 
+```{r}
+ttest <- mercury %>% 
+  t_test(total_mercury ~ fisherman, order = c(1, 0), var.equal = TRUE)
+ttest
+
+t_test_CI <- c(ttest$lower_ci, ttest$upper_ci)
+t_test_CI
+
+df <- 10
+ggplot(data.frame(x = c(-4, 4)), aes(x)) + 
+  stat_function(fun = dt, args = list(df = df)) + # t dist
+  stat_function(fun = dnorm, lty = 5, color = "red") # normal dist in red
+```
+
+##The theoretical p-value   
+
+But, how can we calculate the p-value from this? Well the easy way is with your infer output :) But! Remember that your observed t-statistic is a quantile value for a statistic that we assume follows a t-distribution. How do we calculate the probability of getting a t-statistic as or more extreme than the one we got? We use pt()!
+
+Use pt() to calculate the 2-sided p-value in R. Does it match the output from infer?
+
+```{r}
+
+mu_f <- (mercury %>% filter(fisherman==1))$total_mercury %>% mean()
+mu_f
+
+t2 <- (mean(mercury$total_mercury)-mu_f)/(sd(mercury$total_mercury)/sqrt(length(mercury$total_mercury))) #this is compared to the entire population... but I think it's supposed to be just the non-fisherman
+t2
+
+dof <- mercury %>% filter(fisherman==0) %>% nrow()  
+dof
+
+# from above
+t <- 2.777389	
+# what about ncp? 
+
+pt(q=t, df=dof) # this ends up being supper high
+
+```
+
+#### Well this is clearly incorrect but I'm not sure how to think about this conceptually to remedy it. 
+
+
+##The theorectical confidence interval
+
+Unfortunately, we currently can't get the confidence interval for theoretical methods using infer. But we can use formulas (yay):
+
+$$ \bar{x_1} - \bar{x_2} \pm t * SE_{\bar{x1}-\bar{x_2}} $$
+
+$$SE =  s_p \times \sqrt{\frac{1}{n_1} + \frac{1}{n_2}}$$ 
+
+You should already have variables for the mean difference and the t-statistic critical value(s) (here, t???) from the top formula. In the bottom formula, that standard error should look familiar- it is the standard error of the difference between means. This was the denominator in your calculated t-statistic.  
+
+
+Use these values to calculate the 95% confidence interval for the difference in means. Does it match the output from  infer? Does it contain zero? Will this interval ever not contain the observed difference in sample means?
+
+```{r}
+Tcrit <- qt(0.975, 133)
+cUP <- abs(xbar1-xbar2) + Tcrit*(Sp * sqrt( (1/n1) + (1/n2) ) )
+cLOW <- abs(xbar1-xbar2) - Tcrit*(Sp * sqrt( (1/n1) + (1/n2) ) )
+
+theo_CI <- c(cLOW, cUP)
+
+cUP
+cLOW
+```
+### YUP! same CI 
+
+
+##Compare t-test to permutation   
+
+Using ModernDive 10.7 as an example, as well as our previous resampling lab, conduct a permutation test to evaluate whether there is a mean difference in total mercury between fishermen and non-fishermen. What do you conclude, and how do these results compare to those based on the classical hypothesis test? What, if any, assumptions of each method are comfortable or uncomfortable with?
+
+```{r}
+null_distn <- mercury %>% 
+  specify(total_mercury ~ fisherman) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "diff in means", 
+            order = c("0", "1"))
+
+null_distn %>% 
+  visualize(endpoints = t_test_CI, 
+            direction = "between") # t_test_CI from above, it would be nice to plot the null distribution too
+
+```
+
+
+##Compare t-test to linear regression
+
+Use a simple linear regression to analyze total_mercury ~ fisherman. Look carefully at the output, and compare to the output of the classical t-test. What do you notice is the same?
+
+```{r}
+my_lm <- lm(data= mercury, total_mercury ~ fisherman) 
+summary(my_lm)
+```
+
+### the p-value is the same as the t-statistic above. 
+
+
+# References 
+
+### [1] N.B. Al-Majed and M.R. Preston (2000). "Factors Influencing the Total Mercury and Methyl Mercury in the Hair of Fishermen in Kuwait," Environmental Pollution, Vol. 109, pp. 239-250.

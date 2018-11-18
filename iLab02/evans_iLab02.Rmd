@@ -50,7 +50,7 @@ ggpairs(data=lm_data)
 ```
 
 ## GGpair analysis  
-Weak inverse correllation x25d and zhfa and age, but significant difference in x25d values between sex so an interaction model may be valuable. x25d exhibits some kurtosis and age seems to have two modes, which deserces some looking into (especially if the modes correllate to male/female - might explain diff in sex x25D and sex data). 
+There appears to be a weak inverse correllation between x25d, zhfa and age. There is also a significant difference in x25d values between sex, which indicates an interaction model may be valuable. x25d exhibits some kurtosis and age seems to have two modes, which deserves some looking into (especially if the modes correllate to male/female - might explain diff in sex x25D and sex data). 
 
 ```{r age modality question} 
 lm_data %>% group_by(sex) %>% ggplot(aes(x = ageyears, color=sex)) + geom_density()
@@ -58,7 +58,7 @@ lm_data %>% group_by(sex) %>% ggplot(aes(x = ageyears, color=sex)) + geom_densit
 lm_data %>% ggpairs(aes(color=sex))
 ```
 
-The bimodality doesn't seem to be attributed to sex distribution, I think this is important to explore more. 
+The bimodality doesn't seem to be attributed to sex distribution, I think this is important to explore more but I'm not sure how to approach it efficiently. 
 
 ```{r}
 lm_data %>% skimr::skim()
@@ -110,7 +110,7 @@ My regression model is described (names altered) as:
 $$ VITD = -3.1*AGE - 16.8*SEX_m - 1.73*zHFA + 3.0*AGE*SEX_m + 96.9$$
 
 
-This can be described in a variety of ways, and since we are using a amalygam of units (z-score, years, boolean) it should be carefully described to understand how it's describing the data. In this model, for each year of age, the vitD metric (x25D) decreases by 3.1 BUT the age:sex interaction shows that this is only applicable for females. Age only negligibly affects the vitD metric. The height for age (zhfa) zscore shows that for every increase in z score, the vitD metric decreases by 1.73. It is important to note that since zhfa has been centered, some of the data is negative, and therefore some of the zhfa terms will be net positive. Mathamatically this makes sense, but for units (like a ratio) that can't intuitively be understood as a negative number, its worth recognizing. Lastly, the data shows that males have a lower vitD metric; if you are male then you will have -16.8 vitD that a female doppleganger would have. The intercept is, perhaps the most difficult to grasp intuitively, but I think it's fairly easily described when you recognize the bounds of this model. The bounds of the data are: 
+This can be described in a variety of ways, and since we are using a amalygam of units (z-score, years, boolean) it should be carefully considered to understand how it's describing the data. In this model, for each year of age, the vitD metric (x25D) decreases by 3.1 BUT the age:sex interaction shows that this is only applicable for females. Age only negligibly affects the vitD metric in males. The height for age (zhfa) zscore shows that for every increase in z score, the vitD metric decreases by 1.73. It is important to note that since zhfa has been centered, some of the data is negative, and therefore some of the zhfa terms will be net positive. Mathamatically this makes sense, but for units (like a ratio) that can't intuitively be understood as a negative number, its worth recognizing. Lastly, the data shows that males have a lower average vitD metric: If you are male then you will have -16.8 vitD that a female doppleganger would be predicted to have. The intercept is perhaps the most difficult component of the model to grasp intuitively, but I think it's fairly easily described when you recognize the bounds of this model. The bounds of the data are: 
 
 
 VAR | MIN | MAX
@@ -119,8 +119,19 @@ AGE | 6.2 |14.0
 zhfa|-3.4 |1.8
 x25D| 36  |127
 
-With these bounds in mind, the intercept is the offset that best fits the data while the correllation coefficients determine how the data behaves within these bounds. So, as an example, for a child who is 6.2 years old, has zhfa of -3.4, the intercept compensates to bring the x25D value to within the fitted range. It should NOT be interpreted that for a baby of 0, or a child with ridiculous height for age value (like zero or negative ratio before zscore conversion)that this model predicts a x25D value, this model is ONLY valuable inside the bounds of our data. 
+With these bounds in mind, the intercept is the offset that best fits the data while the correllation coefficients determine how the data behaves within these bounds. So, as an example, for a child who is 6.2 years old, has zhfa of -3.4, the intercept compensates to bring the x25D value to within the fitted range. It should NOT be interpreted that for a baby of 0, or a child with ridiculous height for age value (like zero or negative ratio before zscore conversion) that this model predicts a x25D value, this model is ONLY valuable inside the bounds of our data. 
 
+<span style="color:deeppink"> Responding to the original authors analysis commentss, we see similar values from our data: mean ageyears = 9.9 and zhfa = 0 -> 
+VitD_females = -3.1*9.9 + 96.9 = 66.2 
+VitD_males = -3.1*9.9 -16.8 + 96.9 + 3\*9.9 = 79.1 
+(79.1-66.2)/66.2 => 19.5 %
+
+Males have a 19.5% higher VitD value at the mean age of 9.9 according to this data. 
+
+For each increasing year... 
+-3.1 / 66.2 (from above) => 4.6 % decrease
+... female VitD is predicted to decrease by 4.6% 
+</span> 
 
 # RESIDUAL ANALYSIS 
 
@@ -155,8 +166,10 @@ diag %>%
   select(sex,zhfa,ageyears,x25d,.hat) %>%
   filter(.hat > (2*mean_hat))
 
-diag %>% ggplot(aes(x=ageyears,y=.hat, color=zhfa)) + geom_point() + facet_wrap(facets=vars(sex)) + geom_abline(slope=0, intercept=mean_hat)
+diag %>% ggplot(aes(x=ageyears,y=.hat, color=zhfa)) + geom_point() + facet_wrap(facets=vars(sex)) + geom_abline(slope=0, intercept=mean_hat*2) + ggtitle('leverage')
 # plot .hat vs ... what? 
+
+diag <- diag %>% mutate(high_lev = ifelse(.hat > 2*mean_hat, 'high','low'))
 
 
 # discrepancy
@@ -169,27 +182,115 @@ diag %>%
   arrange(desc(.ext.resid)) %>% 
   slice(1:5)
 
-#diag %>% filter(.ext.resid > 2) %>% nrows() / nrows(diag)
+diag <- diag %>% mutate(dsicrp_high = ifelse(.ext.resid>2,'high','low'))
+
+diag %>% ggplot(aes(x=ageyears, y=.ext.resid, color=as.factor(dsicrp_high))) + geom_point() + facet_wrap(vars(sex)) + ggtitle('discrepancy vs age')
+
+diag %>% ggplot(aes(x=zhfa, y=.ext.resid, color=as.factor(dsicrp_high))) + geom_point() + ggtitle('discrepancy vs zhfa')
+
+diag %>%  group_by(dsicrp_high) %>% count(sex) # 2.9% are high 
+
+diag %>% filter(dsicrp_high=='high' & high_lev=='high')
+
+diag %>% ggplot(aes(x=.hat, y=.ext.resid, color=sex, size=.cooksd)) + geom_point() + geom_hline(yintercept=2) + geom_vline(xintercept=2*mean_hat) + ggtitle("high influence")
+
+
+
 ```
 
 ##How many observations would you expect to have high discrepancy in this sample?</br>
-Expect 5% to be greater than 2. 
+Expect 5% to be greater than 2. We see 2.9% being above 2. 
 
 ##You may want to account for how many females versus males you would expect</br>
-
+I would expect, approximately, the same number of females and males be over 2. From this data, we see double the number of males (10) than females (5) that are above a discrepancy of 2. The population is small enough (15) that I don't think this is conclusively biased but it is indicative that males are less well predicted than females. 
 
 ##Do you see any observations that have both high leverage and discrepancy?</br>
-
+No, there are no observations that have a leverage > 2*mean_hat and discrepancy >2. 
 
 ##Do any points that are either high leverage or high discrepancy also have high influence on the regression estimates, as measured by Cook's distance?</br>
-
+There are a few observations with high discrepancy OR high leverage and high influence, as seen from the "high influence" plot. One in particular that is far right with a high .hat value with significant influence (cooksd)
 
 ##Would you exclude any observations from your model? Justify your answer either way.</br>
-
+No, while there are some values that have high leverage, I would not exclude them because I have no experimental justification so I can't say that they are invalid data points. 
 
 ##In general, would you say the overall model fit is better for females or males? Why or why not?</br>
+There are more outliers in males than there are females so I would, hesitantly, say that it's a better model for females. 
 
+# SUMS OF SQUARES 
 
+```{r}
+vitd_ss <- diag %>% 
+  summarise(total_ss = sum((x25d - mean(x25d))^2),
+            resid_ss = sum((x25d - .fitted)^2), 
+            model_ss = sum((.fitted - mean(x25d))^2),
+            resid_model_ss = resid_ss + model_ss,
+            var_y = total_ss / (529 + 1),
+            r_sqr = model_ss / total_ss)
+vitd_ss
+
+#diag %>% count()
+
+var(diag$x25d)
+
+broom::glance(vitD_mod)
+```
+
+## sum of squares narrative</br> 
+From my data, total_ss = (resid_ss + model_ss)
+
+variance (calculated from total_ss) = variance calculated from x25d = ~236
+
+R2 (from ss metrics) = R2 from model = .236
+
+# Null Model 
+
+```{r}
+vitd_complete <- vitd %>% 
+  drop_na(x25d, sex, ageyears, zhfa)
+int_mod <- lm(x25d ~ 1, data = vitd_complete)
+get_regression_table(int_mod)
+
+anova(int_mod, vitD_mod)
+
+```
+
+##What is the RSS for line 1 (corresponding to the intercept-only model, Model 1) equal to that you calculated above?</br>
+$$RSS_n = 125063$$
+
+##What is the RSS for line 2 (corresponding to Model 2) equal to that you calculated above?</br>
+$$RSS_m = 95511$$
+
+##What is the Sum of Sq equal to that you calculated above?</br>
+$$model_ss_m = 29952$$
+This matches what was calculated by the ANOVA function. 
+
+##In < 3 sentences, explain what it means to use lm(y ~ x + z) versus lm(y ~ 1), and what happens "under the hood" here that you now see in the anova output.</br>
+
+The ANOVA function is comparing the two given models, one being your null intercept-only model lm(y ~ 1)  and the other being a variable dependant model. The resultant value is a ratio of the Residual Sum of Squares of your model and the null model. So functionally, a high value indicates that your model decreases the residual sum of squares much better than a intercept only model. 
+
+# Plot Comparison 
+
+##What appears to be the minimum value of serum 25D levels?</br>
+50 nmol/L
+
+##What appears to be the max?</br>
+82 nmol/L
+
+##Do those match your EDA?</br>
+EDA shows min 36, max of 127. So the plot min/max are within the bounds of our data. 
+
+##Recreate this figure in ggplot2 using the observed data (ignore height-for-age z-scores at this point).</br>
+```{r}
+lm_data %>% ggplot(aes(x=ageyears, y=x25d, color =sex)) + geom_point()
+```
+
+##Make the same plot where the y-axis should now be mapped to the fitted value for the outcome variable (using the full model with height-for-age z-scores in it). Discuss the differences you see between this plot and the previous. Were you able to recreate the published figure? It is helpful in understanding the researchers' findings? Was it misleading at all?</br>
+
+The figure follows the same trend but the range is a little bit larger, I suspect that the published plot removed some of the data in the outlier step. I would need to understand their process and question why or how they justify the dropping outliers. 
+
+```{r}
+diag %>% ggplot(aes(x=ageyears, y=.fitted, color=sex)) + geom_point()
+```
 
 
 
