@@ -16,6 +16,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyr)
 library(dplyr)
+library(resampledata)
+library(ggplot2)
 ```
 #Overview
 ###Due: 11/20/2018
@@ -32,7 +34,6 @@ $$ \int_{0}^{4} cx = 1  --> c = 1/8  $$
 
 #### Answer: c=1/8
 #### Explanation: To find c, we use the probability density function property that the integral over all space of the PDF must be equal to 1. Since we know the PDF is 0 everywhere except 0-4, we can integrate over this region and solve for c such that the above integral computes to 1. 
-
 
 ###b. find the cumulative distribution function F(x).
 
@@ -188,6 +189,7 @@ qt(1-0.025, df = 51-1)
 ##1. 
 ###Suppose you have 10 numbers and have computed the mean to be 8.0. You then discover that the last number in the data was entered incorrectly. It was entered as 8.0 when it should have been 4.0. If you replace the incorrect value (8.0) with the correct one (4.0), and recompute the mean, you will obtain a new mean of:
 Answer: **d. 7.6**
+
 ##2.
 ###You have a set of data that have a mean of 50 and a standard deviation of 12. You wish them to have a mean of 65 and a standard deviation of 10, while retaining the shape of the distribution. What values of a and b in the linear transformation formula Y = aX + b will produce a new set of data with the desired mean and standard deviation?
 Answer: **a. a = 0.833, b = 23.3**
@@ -205,8 +207,8 @@ Answer: **a. 0.645**
 
 ##5.
 ###You have 10 numbers with a sample mean of 9.0 and a sample variance of 11.0. You discover that the last number in the list was recorded as 8.0 when it should have been recorded as 12.0. If you correct your error and correctly recompute the sample variance, what value will you obtain?
-*a. 11.71* Almost... 117/10 /= 11.71  
-Answer: **e. None of the above answers are correct** Correct answer is 11.7
+Answer: **e. None of the above answers are correct** 
+
 ## 6.
 ###If a = 0.01, then the probability of a correct acceptance of a true statistical null hypothesis is:
 Answer: **c. 0.99** 
@@ -218,6 +220,7 @@ mu <- 0.1 + 2*0.15 + 3*0.2 + 4*0.2 + 5*0.35
 (0.1 + 4*0.15 + 9*0.2 + 16*0.2 + 25*0.35) - mu^2
 ```
 Answer: **e. 1.8475**
+
 ##8.
 ###Given the following probability distribution for the random variable X, the expected value of X is:
 ```{r}
@@ -265,11 +268,11 @@ Answer: **c. It will become four times as large**
 ###A researcher has data for two variables, x and y. First, she converts both variables to z-scores with a mean of 0 and standard deviation of 1, and calls them zx and zy. Next, she takes the mean of both z-scores and calls that new variable avez. What is the mean and standard deviation of the avez variable?
 ```{r}
 set.seed(100000)
-x = sample(seq(0,100,1), size = 100000 , replace=TRUE)
-y = sample(seq(0,100,1), size = 100000 , replace=TRUE)
+x = sample(seq(0,100,1), size = 100 , replace=TRUE)
+y = sample(seq(0,100,1), size = 100 , replace=TRUE)
 
-xz <- scale(x, center=TRUE, scale=TRUE)
-yz <- scale(y, center=TRUE, scale=TRUE)
+xz <- scale(x, center=TRUE, scale=TRUE)[,1]
+yz <- scale(y, center=TRUE, scale=TRUE)[,1]
 
 mean(xz)
 mean(yz)
@@ -301,7 +304,7 @@ Answer: **e. all of the above**
 ```{r}
 pnorm(116, sd=15, mean=100, lower.tail = FALSE)
 ```
-a. 12.464
+
 Answer: **b. 14.306** 
 
 ##21.
@@ -317,66 +320,73 @@ Answer: **a. <= -2.06, >= 2.06**
 X=c(21,21,21,20,22,20,22)
 mean(X)
 
-qnorm(1-0.05/2, 7-1, mean=20, sd=1.5)
+qnorm(1-0.05/2, mean=20, sd=1.5)
 ```
 Answer: **a. yes**
 
 ###For the last set of questions, suppose you have four children in a reading group (Beth, Marianne, Steven, Joel) and you randomly pick one child to lead the discussion in group each day of a 5-day week. Furthermore, we define the outcome of each day's selection to be binary: Steven leads the discussion or he doesn't.
 
-23. The number of times Steven leads the discussion in a week would be the:
+##23.
+###The number of times Steven leads the discussion in a week would be the:
 a. probability distribution for this experiment
-b. probability of an outcome
+**b. probability of an outcome**
 c. constant in this experiment
 d. random variable in this experiment
-24. The probability that Steven leads the discussion all 5 days in a week is the:
-a. expected value
-b. probability distribution
-c. probability of a simple event
-d. random variable
-25. If we could replicate this experiment many, many times, the average number of times that Steven leads
-the discussion in a week would be the:
-a. expected value
-b. probability distribution
-c. probability of an outcome
-d. random variable
-26. If we found the probability of Steven leading the discussion zero times, one time, two times, three times,
-four times, and five times, the set of six probabilities would be the:
-a. expected value
+
+##24.
+###The probability that Steven leads the discussion all 5 days in a week is the:  
+a. expected value  
+b. probability distribution  
+Answer: **c. probability of a simple event**  
+d. random variable  
+
+##25.
+###If we could replicate this experiment many, many times, the average number of times that Steven leads the discussion in a week would be the:
+Answer: **a. expected value**
 b. probability distribution
 c. probability of an outcome
 d. random variable
-27. Monday's selection of a discussion leader could be considered a ____, while the selections of discussion
-leaders for the week constitute a ____:
+
+##26.
+###If we found the probability of Steven leading the discussion zero times, one time, two times, three times, four times, and five times, the set of six probabilities would be the:
+a. expected value
+Answer: **b. probability distribution**
+c. probability of an outcome
+d. random variable
+
+##27.
+###Monday's selection of a discussion leader could be considered a _ _ _ , while the selections of discussion leaders for the week constitute a ____:
 a. binomial experiment, bernoulli trial
-b. bernoulli trial, binomial experiment
-c. neither
-28. What is the probability that Steven would be selected all 5 days of the week?
+Answer: **b. bernoulli trial, binomial experiment**
+c. neither   
+
+##28.
+###What is the probability that Steven would be selected all 5 days of the week?
 a. .00000000000000
-b. .0009765625
+Answer: **b. .0009765625** 
 c. .0039065500
 d. .25
-6
-29. What is the expected number of times that Steven would be selected?
-a. 0.00
-b. 1.00
-c. 1.25
-d. 2.50
-30. Using the following code, run a permutation test with the hypothesis that mean Hotwing consumption
-is different for men than for women (assume ?? = .05, 2-tailed). Does the data support your hypothesis,
-and what is the associated p-value?
-a. The data supports HA, p = 0.00078
+
+##29. What is the expected number of times that Steven would be selected?
+a. 0.00  
+b. 1.00  
+Answer: **c. 1.25**
+d. 2.50  
+
+##30.
+###Using the following code, run a permutation test with the hypothesis that mean Hotwing consumption is different for men than for women (assume a = .05, 2-tailed). Does the data support your hypothesis, and what is the associated p-value?
+Answer: **a. The data supports HA, p = 0.00078**
 b. The data supports HA, p = 0.00156
 c. We fail to reject H0, p = 0.156
 d. We fail to reject H0, p = 0.780
-#install.packages("resampledata")
-library(resampledata)
-library(dplyr)
+
+```{r}
+
 glimpse(Beerwings)
 # observed mean difference
-Beerwings %>%
-group_by(Gender) %>%
-summarise(mean_wings = mean(Hotwings))
-Run the permutation:
+Beerwings %>% group_by(Gender) %>% summarise(mean_wings = mean(Hotwings))
+Beerwings %>% filter(Gender == 'F') %>% nrow() #15 M, 15 F
+
 set.seed(0)
 B <- 10^5-1 #set number of times to repeat this process
 result <- numeric(B) # space to save the random differences
@@ -384,4 +394,14 @@ for(i in 1:B){
 index <- sample(30, size=15, replace = FALSE) # sample of numbers from 1:30
 result[i] <- mean(Beerwings$Hotwings[index]) - mean(Beerwings$Hotwings[-index])
 }
-7
+mean(result)
+
+sample_mean_diff <- 14.53-9.3
+
+Beerwings %>% ggplot(aes(x=Hotwings, color = Gender)) + geom_density() 
+ggplot() + geom_density(aes(x=result)) + geom_vline(xintercept =sample_mean_diff, col='red' )
+
+p.value <- sum(result > sample_mean_diff) / B
+print(c('p.value: ', p.value))
+
+```
