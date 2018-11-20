@@ -54,7 +54,7 @@ $$ \lambda = 1/10 \\ \bar{x} = 12$$
 ###a. What is the expected value of a sample mean? [hint](https://en.wikipedia.org/wiki/Exponential_distribution#Mean.2C_variance.2C_moments_and_median)
 ####Answer:
 $$ E[X]= \frac{1}{\lambda} = 10 $$ 
-####Explanation: The answer can be taken from posted E[x] equation for a exponential distribution but to derive this we should be able to integrate from -inf to Ex and set that equal to 0.5 to solve for Ex. However, this doesn't seem to give the wiki posted answer. I'll want to talk about this after the test. 
+####Explanation: The answer can be taken from posted E[x] equation for a exponential distribution but to derive this we should be able to integtrate from -inf to Ex and set that equal to 0.5 to solve for Ex. However, this doesn't seem to give the Equation posted on wikipedia. I'll want to talk about this after the test. 
 ![attempted derivation](Ex_derivation1.png){width=350px}
 
 
@@ -233,7 +233,8 @@ Answer: **d. 3.48**
 ###The sampling distribution of the sample mean based on N iid observations
 Answer: **a. converges asymptotically to a normal distribution in shape under the conditions of the Central Limit Theorem**
 
-##10. If one draws all possible samples for various values of N from the same population of raw scores, as N increases:
+##10. 
+###If one draws all possible samples for various values of N from the same population of raw scores, as N increases:
 Answer: **c. The standard error of the mean decreases**
 
 ##11.
@@ -328,57 +329,57 @@ Answer: **a. yes**
 
 ##23.
 ###The number of times Steven leads the discussion in a week would be the:
-a. probability distribution for this experiment
-**b. probability of an outcome**
-c. constant in this experiment
-d. random variable in this experiment
+a. probability distribution for this experiment  
+Answer: **b. probability of an outcome**  
+c. constant in this experiment  
+d. random variable in this experiment  
 
 ##24.
 ###The probability that Steven leads the discussion all 5 days in a week is the:  
-a. expected value  
-b. probability distribution  
-Answer: **c. probability of a simple event**  
+a. expected value    
+b. probability distribution    
+Answer: **c. probability of a simple event**   
 d. random variable  
 
 ##25.
 ###If we could replicate this experiment many, many times, the average number of times that Steven leads the discussion in a week would be the:
-Answer: **a. expected value**
-b. probability distribution
-c. probability of an outcome
-d. random variable
+Answer: **a. expected value**  
+b. probability distribution  
+c. probability of an outcome  
+d. random variable  
 
 ##26.
 ###If we found the probability of Steven leading the discussion zero times, one time, two times, three times, four times, and five times, the set of six probabilities would be the:
-a. expected value
-Answer: **b. probability distribution**
-c. probability of an outcome
-d. random variable
+a. expected value  
+Answer: **b. probability distribution**  
+c. probability of an outcome  
+d. random variable  
 
 ##27.
 ###Monday's selection of a discussion leader could be considered a _ _ _ , while the selections of discussion leaders for the week constitute a ____:
-a. binomial experiment, bernoulli trial
-Answer: **b. bernoulli trial, binomial experiment**
-c. neither   
+a. binomial experiment, bernoulli trial  
+Answer: **b. bernoulli trial, binomial experiment**  
+c. neither     
 
 ##28.
 ###What is the probability that Steven would be selected all 5 days of the week?
-a. .00000000000000
-Answer: **b. .0009765625** 
-c. .0039065500
-d. .25
+a. .00000000000000  
+Answer: **b. .0009765625**   
+c. .0039065500  
+d. .25  
 
 ##29. What is the expected number of times that Steven would be selected?
-a. 0.00  
+a. 0.00   
 b. 1.00  
-Answer: **c. 1.25**
-d. 2.50  
+Answer: **c. 1.25**  
+d. 2.50    
 
 ##30.
 ###Using the following code, run a permutation test with the hypothesis that mean Hotwing consumption is different for men than for women (assume a = .05, 2-tailed). Does the data support your hypothesis, and what is the associated p-value?
-Answer: **a. The data supports HA, p = 0.00078**
-b. The data supports HA, p = 0.00156
-c. We fail to reject H0, p = 0.156
-d. We fail to reject H0, p = 0.780
+Answer: **a. The data supports HA, p = 0.00078**  
+b. The data supports HA, p = 0.00156  
+c. We fail to reject H0, p = 0.156  
+d. We fail to reject H0, p = 0.780  
 
 ```{r}
 
