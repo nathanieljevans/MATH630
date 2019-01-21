@@ -1,0 +1,325 @@
+---
+title: "inclass_lab_evans_EXTRA-CREDIT"
+author: "Nathaniel Evans"
+date: "December 5, 2018"
+output:
+  html_document: 
+    theme: flatly 
+    highlight: kate
+    toc: true
+    toc_depth: 2
+    toc_float : true
+    smooth_scroll: true
+    number_sections : false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+```
+
+
+```{r}
+cadds <- read_csv("cadds.csv", col_types = cols(
+  sex = col_factor(levels = NULL),
+  eth = col_factor(levels = NULL)
+))
+
+glimpse(cadds)
+```
+
+##Univariate Statistics: Ethnicity (Factor A)
+
+```{r}
+cadds %>% tabyl(eth)
+```
+
+```{r}
+cadds <- cadds %>% 
+  mutate(eth3 = case_when(
+    eth == c("White not Hispanic") ~ "WNH",
+    eth == c("Hispanic") ~ "Hispanic"
+  )) %>% 
+  mutate(eth3 = ifelse(is.na(eth3), "Other", eth3),
+         eth3 = as.factor(eth3)
+  )
+
+cadds %>% 
+  tabyl(eth3)
+```
+
+```{r}
+
+cadds %>% 
+  group_by(eth3) %>% 
+  summarise(mean = mean(exp, na.rm =TRUE),
+            sd = sd(exp, na.rm = TRUE),
+            n = n())
+
+```
+
+
+
+
+```{r}
+ethbox <- ggplot(cadds, aes(eth3, exp,fill=eth3))+
+  geom_boxplot()+ 
+  scale_x_discrete(labels=c("Hispanic","Other","White not Hispanic"))+ 
+  guides(fill=FALSE)+
+  labs(x = "Ethnicity", y = "Mean Expenditures")+
+  theme_bw() 
+ethbox
+```
+
+
+```{r}
+ethline <- ggplot(cadds, aes(eth3, exp))+ 
+  stat_summary(fun.y = mean, geom = "line", size = 1, aes(group=1), colour = "#FF6633") + 
+  stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width = 0.2, size = 0.75, colour = "#990000") + 
+  stat_summary(fun.y = mean, geom = "point", size = 4, colour = "#990000") + 
+  stat_summary(fun.y = mean, geom = "point", size = 3, colour = "#FF6633") + 
+  labs(x = "Ethnicity", y = "Mean Expenditures")+
+  theme_bw() 
+ethline
+```
+
+
+```{r}
+cadds %>% 
+  group_by(sex) %>% 
+  summarise(mean = mean(exp, na.rm =TRUE),
+            sd = sd(exp, na.rm = TRUE),
+            n = n())
+```
+
+
+```{r}
+genbox <- ggplot(cadds, aes(sex, exp,fill=sex))+
+  geom_boxplot()+ 
+  scale_x_discrete(labels=c("Male","Female"))+ 
+  guides(fill=FALSE)+
+  labs(x = "Gender", y = "Mean Expenditures")+
+  theme_bw() 
+genbox
+```
+
+
+```{r}
+genline <- ggplot(cadds, aes(sex, exp))+ 
+  stat_summary(fun.y = mean, geom = "line", size = 1, aes(group=1), colour = "#FF6633") + 
+  stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width = 0.2, size = 0.75, colour = "#990000") + 
+  stat_summary(fun.y = mean, geom = "point", size = 4, colour = "#990000") + 
+  stat_summary(fun.y = mean, geom = "point", size = 3, colour = "#FF6633")+
+  labs(x = "Gender", y = "Mean Expenditures")+
+  theme_bw() 
+genline
+```
+
+## TWO WAY ANOVA
+Now we will analyze both factors, ethnicity and gender, simultaneously. First, just as we did at the univariate level, we can look at the means. Now, the means in each cell are called cell means.
+
+```{r}
+cadds %>% 
+  group_by(sex, eth3) %>% 
+  summarise(mean = mean(exp, na.rm =TRUE),
+            sd = sd(exp, na.rm = TRUE),
+            n = n())
+```
+
+Plotting data for a 2x2 ANOVA is a little tricky, but worthwhile.
+
+```{r}
+int <- ggplot(cadds, aes(eth3, exp, colour = sex)) +
+  stat_summary(fun.y = mean, geom = "point") + 
+  stat_summary(fun.y = mean, geom = "line", aes(group= factor(sex))) + 
+  stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width = 0.2) + 
+  labs(x = "Ethnicity", y = "Mean Expenditures", colour = "Gender") +
+  theme_bw() 
+int
+```
+
+
+Another (less pretty but still functional) way:
+
+```{r}
+interaction.plot(cadds$eth3,cadds$sex,cadds$exp,type="b",pch=20)
+```
+
+What you see here is exactly what we would expect based on the univariate statistics and plots:
+
+There appears to be a main effect of ethnicity; that is, expenditures appear to be higher among White non-Hispanic individuals than among Hispanic individuals.
+
+There does not appear to be a main effect of gender; that is, expenditures appear to be roughly the same for males and females.
+
+There does not appear to be a significant interaction between ethnicity and gender; that is, the effect of ethnicity does not appear to depend on the level of gender and vice versa. If the interaction were significant, the main effect of one factor would be different for different levels of the other factor (so, if we saw that expenditures were higher among Hispanics than White non-Hispanics but only for girls). So the question to ask yourself when you look at this graph is: does including gender change how ethnicity behaves? In this case, the answer is no. An important point to remember is that if you do have a significant interaction term, this changes the way you have to interpret the main effects. A significant main effect in the context of a significant interaction is not the same as a significant main effect in the context of a non-significant interaction.
+
+Let's run the ANOVA in R.
+
+```{r}
+ca_aov1 <- aov(exp~sex*eth3,data=cadds) #same as: sex+eth3+sex:eth3
+summary(ca_aov1)
+```
+
+Right? Wrong. This is not the way to do a 2x2 ANOVA in R. Or at the very least, this is not an advisable way to run anything more complicated than a one-way ANOVA.
+
+##Types of Sums of Squares
+The first issue is that the default sums of squares output in R is Type I. Turns out, there are actually four different types of sums of squares, dating back apparently to the original output available from SAS. Strangely, Type I sums of squares are sequential, meaning that the order with which you enter the IVs in your model statement in R matters. In fact, each IV is only evaluated after the previous IV as they were typed in the model. It is rare that this is the hypothesis you would like to test. Please read up on this issue here. In our example, because gender and the interaction term are both not significant we get about the same results, but it is critical to remember that R by default via aov provides Type I sums of squares estimates. For our purposes, because this interaction is not likely to be significant (look at my plots again), I would go with Type II sums of squares. In the absence of an interaction, I think Type II is defensible (and I have yet to see the type of SS reported).
+
+The easiest way to conduct a Type II/III sums of squares ANOVA is to use the car package, although there is a way in base R to do this. But, before we tackle this, we need to discuss the second big issue, which is setting contrasts.
+
+##Setting Contrasts
+Another issue is that the default contrasts in R. You can easily check the default contrasts for any factor variable:
+
+```{r}
+contrasts(cadds$eth3)
+```
+
+In the ANOVA framework, a contrast is a weighted sum of the group means such that:
+$$L=c1??1+c2??2+???+ck??k$$
+
+What the above output shows you are R's default coding schemes for the contrasts, but not the contrast weights themselves (the cj values above). As a demonstration, append a column of one's in the first column of this matrix, then take the inverse:
+
+```{r}
+temp <- cbind(constant=1,contrasts(cadds$eth3))
+temp 
+solve(temp)
+```
+
+Now the rows of this matrix tells you the actual contrast weights (with the exception of ??0, which is not a contrast; note it is the only one that does not sum to zero). Thus, by default, the coefficients ??0, ??2, and ??3 in our linear model are contrasts:
+$$??0=+1??1+0??2+0??3 \\ ??1=???1??1+1??2+0??3 \\ ??2=???1??1+0??2+1??3$$
+
+Note that if you solve each of these equations, our ??0 is simply the mean of group 1 (??1=y1¯), ??1 is the difference between ??2 and ??1 (y2¯???y1¯), and ??2 is the difference between ??3 and ??1 (y3¯???y1¯). You might at this point wish to ask yourself- are these the effects you want to test?
+
+In a typical ANOVA, we are likely to be more interested in the following contrasts:
+
+$$??1=2k??1???1k??2???1k??3=??1???(1k??1+1k??2+1k??3) \\ ??2=2k??2???1k??1???1k??3=??2???(1k??1+1k??2+1k??3)$$ 
+
+```{r}
+options(contrasts=c("contr.sum","contr.poly")) #this MUST be specified before aov
+contrasts(cadds$eth3)
+
+tempnew <- cbind(constant=1,contrasts(cadds$eth3))
+solve(tempnew)
+```
+
+Here are our new cj values:
+$$??0=.33??1+.33??2+.33??3 \\??1=.67??1???.33??2???.33??3=??1???(.33??1+.33??2+.33??3) \\ ??2=???.33??1+.67??2???.33??3=??2???(.33??1+.33??2+.33??3)$$
+
+
+Note that now if you solve each of these equations, our ??0 is the grand mean (????????=y??????¯), ??1 is the difference between ??1 and the grand mean, and ??2 is the difference between ??2 and the grand mean. Now of course, the ANOVA output does not provide estimates for ??, but as we have seen, ANOVA is based off of regression - it is just a different way of summarizing the analyses in sums of squares form. Long story short, it is important to set the contrasts using the options I specify below, because the default contrast coding scheme in R rarely reflects your null/alternative hypotheses.
+
+```{r}
+library(car)
+options(contrasts=c("contr.sum","contr.poly")) #this MUST be specified before aov
+ca_aov2 <- aov(exp~sex*eth3,data=cadds)
+Anova(ca_aov2,type=c("II"))
+```
+
+And now we can finally interpret our findings. First, there is a significant F-ratio for ethnicity, indicating that expenditures were significantly different based on the individuals' ethnicity. This means that overall, if we ignore gender, ethnicity influenced expenditures. Second, there is not a significant F-ratio for gender, which tells us that if we ignore ethnicity, the gender of the individual did not influence expenditures. So, ethnicity being "equal", being male or female did not affect expenditures. Finally, the F-ratio for the interaction is also not significant, which tells us that our interpretations of the main effects are valid, and neither depend on the other factor in the model.
+
+N.B. This is a nice command in R for easily obtaining all cell means in a table format (note that "rep"=n for that cell):
+
+```{r}
+model.tables(ca_aov2,"means", SE=T) #unbalanced, so SEs are a problem
+```
+
+##Post-hoc Contrasts
+Now, we know there is a main effect of ethnicity, so we need to conduct post-hoc analyses to see where these differences lie. Let's try a few multiple comparison procedures: Benjamini-Hochberg, Bonferroni, and Tukey Honestly Significant Difference.
+
+```{r}
+pairwise.t.test(cadds$exp,cadds$eth3, p.adjust.method="BH", pool.sd=T)
+pairwise.t.test(cadds$exp,cadds$eth3, p.adjust.method="bonferroni", pool.sd=T)
+library(multcomp)
+summary(glht(ca_aov2, linfct = mcp(eth3 = "Tukey")))
+TukeyHSD(ca_aov2, "eth3", ordered = FALSE) #another option
+plot(TukeyHSD(ca_aov2, "eth3"))
+```
+
+All of these converge to the same conclusion: expenditures among White non-Hispanics are greater than all other groups, and expenditures among Hispanics are the lowest.
+
+##Unequal Variances
+With unequal variances with just one IV factor, we could run Welch's F test (oneway.test), which is the alternative to Welch's t test (t.test with var.equal=F) when we have a factor with more than two levels. Unfortunately, there are not many options for unequal variances when we have more than one IV. The car package does offer this "white.adjust" option, which if set to true will use a heteroscedasticity-corrected coefficient covariance matrix (see White, 1980, "A heteroskedastic consistent covariance matrix estimator and a direct rest of heteroskedasticity"). For now, I will introduce this as an option for the omnibus ANOVA, although there may be better (non-NHST) options for such a scenario.
+```{r}
+Anova(ca_aov2,type=c("II"), white.adjust=T)
+```
+Follow-up contrasts between groups could be done using pairwise Welch's t-tests. This option cannot be used when you have
+paired samples (i.e., pool.sd must be false if paired=TRUE).
+```{r}
+pairwise.t.test(cadds$exp,cadds$eth3, p.adjust.method="BH", pool.sd=F)
+pairwise.t.test(cadds$exp,cadds$sex, p.adjust.method="BH", pool.sd=F)
+```
+
+##On your own:
+You will conduct an ANOVA to examine whether ethnicity and age affect expenditures. This ANOVA will be a 2 (2 levels of ethnicity: White non-Hispanic and Hispanic) x 5 (5 levels of age group: under 6, 6-12, 13-17, 18-21, and over 22). So, first, drop the "other" ethnicity category, and create an age group variable as follows:  
+
+```{r}
+ca2 <- subset(cadds, !eth3=="Other")
+ca2$eth3 <- droplevels(ca2$eth3)
+library(Hmisc)
+ca2$agegroup <- cut2(ca2$age, c(6,13,18,22))
+table(ca2$agegroup,ca2$eth3)
+```
+
+Plot age group on the x-axis and expenditures on the y-axis using boxplots. Needs for disabled individuals typically increase with age, resulting in higher expenditures at older ages. Is this what you observe?
+
+```{r}
+ca2 %>% ggplot(aes(x=age,y=exp, group=agegroup)) + geom_boxplot()
+```
+
+Now, add ethnicity as the "fill" factor, making a separate boxplot for each ethnic group a different color. Do you see anything to confirm what we previously found was the main effect of ethnicity? Remember, we found that at any level of the factor "gender", expenditures were higher among White non-Hispanic versus Hispanic individuals. Do you see the same pattern here with respect to age group rather than gender? Based on our previous analyses, what did you expect to see, and what surprises you?
+
+```{r}
+ca2 %>% ggplot(aes(x=agegroup,y=exp, fill=eth)) + geom_boxplot() # + facet_wrap(~eth3)
+```
+
+Examine the means, sds, and n's using tapply(DV, list(IV1,IV2), function) as I did in the previous example. Look very carefully at each. Do you see any patterns, in particular in the sample sizes? Knowing that Hispanic children tend to be diagnosed later than White non-Hispanic children (and thus should be under-represented at younger ages), do these numbers surprise you?
+#### the means increase with agegroup as we've seen before, but the differences between the groups are negligible. If there is truly a difference in the age at which children are diagnosed then I would have expected more of a difference in younger age groups. 
+
+```{r}
+tapply(ca2$exp, list(ca2$agegroup,ca2$eth), mean ) 
+tapply(ca2$exp, list(ca2$agegroup,ca2$eth), sd )
+tapply(ca2$exp, list(ca2$agegroup,ca2$eth), length )
+```
+
+Create the interaction plot (x-axis=ethnicity; y-axis=expenditures; color=age group) and interpret. Do you see evidence for systematic bias in expenditures in favor of White non-Hispanics at any age group? That is, is the typical Hispanic receiving fewer funds (expenditures) than the typical White non-Hispanic?
+
+```{r}
+int <- ggplot(ca2, aes(eth, exp, colour = agegroup)) +
+  stat_summary(fun.y = mean, geom = "point") + 
+  stat_summary(fun.y = mean, geom = "line", aes(group= factor(sex))) + 
+  stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width = 0.2) + 
+  labs(x = "Ethnicity", y = "Mean Expenditures", colour = "Gender") +
+  theme_bw() 
+int
+```
+#### It does not look like the hispanic group is receiving fewer funds then the white group, in fact, by eye the hispanic group looks like they receive more funds. 
+
+Conduct an ANOVA and interpret. What do you conclude? How do these effects differ from our previous analyses of ethnicity and gender? Do your previous conclusions change based on your analyses? Follow up with any post-hoc tests you think are necessary to validate your conclusions.
+
+```{r}
+options(contrasts=c("contr.sum","contr.poly")) #this MUST be specified before aov
+ca_aov2 <- aov(exp~agegroup*eth,data=ca2)
+Anova(ca_aov2,type=c("II"))
+
+summary(glht(ca_aov2, linfct = mcp(eth = "Tukey")))
+TukeyHSD(ca_aov2, "eth", ordered = FALSE) #another option
+plot(TukeyHSD(ca_aov2, "eth"))
+```
+
+#### It looks like agegroup is the only significant predictor for expenditures in this model. The post-hoc tests show similar results.   
+
+
+Why is the overall average for all individuals significantly different indicating ethnic discrimination of Hispanics? To answer this question, you should consider the linear structural model parameterization for the two-way ANOVA:
+
+```{r}
+ca2 %>% 
+  group_by(agegroup, eth) %>% 
+  summarise(mean = mean(exp, na.rm =TRUE),
+            sd = sd(exp, na.rm = TRUE),
+            n = n())
+```
+#### There are almost 200 observations of white non hispanics in the 22-95 age group, which is the highest expenditure group, therefore it'll make it look like hispanics are underrepresented. So the overall grand mean for white is much higher because its weighted by higher age samples. 
+

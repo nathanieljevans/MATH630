@@ -1,0 +1,215 @@
+---
+title: "evans_iLab04"
+author: "Nathaniel Evans"
+date: "December 6, 2018"
+output:
+  html_document: 
+    theme: flatly 
+    highlight: kate
+    toc: true
+    toc_depth: 2
+    toc_float : true
+    smooth_scroll: true
+    number_sections : true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(moderndive)
+library(broom)
+library(infer)
+library(multcomp) # for post-hoc tests
+library(ggbeeswarm)
+library(car) # for Anova 
+library(phia) # for post-hoc tests
+library(GGally)
+select <- dplyr::select # deals with the namespace conflict
+```
+
+# Loading Data
+
+```{r}
+or_vitd <- read_csv("http://bit.ly/conj620-orvitdcsv",
+                    col_types = cols(
+                      season = col_factor(levels = NULL),
+                      patient_type = col_factor(levels = NULL),
+                      region = col_factor(levels = NULL)))
+```
+
+# EDA
+
+```{r}
+glimpse(or_vitd) 
+
+summary(or_vitd)
+
+ggpairs(or_vitd)
+
+```
+
+#### There are 6 variables, 533 observations. There are 4 categorical variables and 2 continuous variables (although one is discrete (age)). Distributions look fairly normal and no obvious trends except distinct difference between age and patient-type. It's also worth noting that the majority of observations are taken in the winter, this will skew group means significanctly. 
+
+
+# Comparing Means
+
+Create a plot of the mean vitamin d levels (use stat_summary with fun.data = mean_cl_boot- this gives you the mean standard error from 1000 bootstrapped replicates) across season, colored by patient type.
+
+
+```{r}
+line <- or_vitd %>% ggplot(aes(x=season, y=vitamin_d, colour = patient_type))
+line + stat_summary(fun.data = mean_cl_boot, geom = "pointrange")
+
+```
+
+###State the null and alternative hypotheses for the omnibus ANOVA.
+####Null: The mean vitamin d levels for patients with IEM are not significantly different than healthy patients 
+####Alternative: The mean vitamin d levels for patients with IEM are significantly different than healthy patients 
+
+###Hazard a guess as to 
+####(a) whether there are any main effects of season or patient type
+This data can be causally explained that patients with IEM do not get as much vitamin d, and have limited exposure to the sun so in winter when the entire population is deprived of sun, the two groups are much closer versus the summer when the healthy population receives vitamin d by normal sun-related processes. 
+
+
+####(b) whether you think there is a significant interaction between the two variables (that is, does the effect of one variable seem to depend on the level of the other variable)? Some examples are if you think patient type matters but only in the summer, or if season matters more for cases than controls.
+From this intial plot it seems indicative that patient type matters drastically in the summer but negligibly in the winter. However the error/confidence bars may still overlap, can't tell because one is on top of the other. 
+
+#Two-way ANCOVA
+
+```{r}
+# patient only
+vitd_1 <- lm(vitamin_d ~ patient_type + season, data = or_vitd)
+anova(vitd_1)
+moderndive::get_regression_table(vitd_1)
+
+# season only
+vitd_2 <- lm(vitamin_d ~ season + patient_type, data = or_vitd)
+anova(vitd_2)
+moderndive::get_regression_table(vitd_2)
+```
+
+### Next, try switching the order of the two predictors (so, season should now be the first predictor in your lm model), then run anova on the new lm object. What do you notice?
+The P-value for our predictors changes slighlty based on the order that they are given in the lm formula.
+
+###At this point, you may wish to examine each lm object using moderndive::get_regression_table(). Do the regression coefficients change depending on the order of the predictors?
+The regression coefficients do NOT change when switching the order of predictors. It seems counter-intuitive that you can have two different P values from an identical model. Are the dof different somehow? 
+
+### How does a simpler model compare? 
+```{r}
+# patient only
+vitd_patient <- lm(vitamin_d ~ patient_type, data = or_vitd)
+anova(vitd_patient, vitd_1)
+
+# season only
+vitd_season <- lm(vitamin_d ~ season, data = or_vitd)
+anova(vitd_season, vitd_2)
+```
+
+### This data shows that season explains the majority of the variance as we've seen before. This can be thought of that when comparing season plus or minus patient type, there is little difference in efficacy but when comparing patient type with/out season there is significant difference. 
+
+
+# Types of sums of squares
+
+#### and here is the critical information that explains above: 
+
+Type I: sequential (order matters)  
+This is the default in R when you use anova.  
+This is rarely what you will be interested in if you are not doing a nested models comparison intentionally.  
+Type II:  
+This type tests for each main effect after the other main effect. Note that no significant interaction is assumed (in   other words, you should test for interaction first) and only if AB is not significant, continue with the analysis for   main effects).  
+Type III:  
+This type tests for the presence of a main effect after the other main effect and interaction. However, it is often not   interesting to interpret a main effect if interactions are present (generally speaking, if a significant interaction is present, the main effects should not be further analysed). If the interactions are not significant, type II gives a more powerful test.
+
+
+# Two-way ANCOVA with Type II SS
+
+```{r}
+vitd_add <- lm(vitamin_d ~ season + patient_type, data = or_vitd)
+Anova(vitd_add, type = 2)
+
+vitd_add <- lm(vitamin_d ~ patient_type + season, data = or_vitd)
+Anova(vitd_add, type = 2)
+```
+
+### MUWAHAHA NO CHANGE IN P
+
+```{r}
+vitd_add_means <- interactionMeans(vitd_add)
+plot(vitd_add_means)
+```
+
+### This is another way of visualizing what we've already explored. As we can see, when including season, our model separation is significantly different. Left and right are columns are showing the the same thing but in different ways, and the identity matrix is the same model. 
+
+#Two-way ANOVA with Type II SS
+
+###Now run the same ANOVA analysis, this time allowing your two predictors to interact.
+
+```{r}
+vitd_int <- lm(vitamin_d ~ season * patient_type, data = or_vitd)
+d_int_aov <- Anova(vitd_int, type = 2)
+d_int_aov
+```
+
+###Is the interaction significant? If it is not, then the Type II sums of squares analysis is valid. What do you say?
+No, the interaction is not significant.
+
+Use the phia package to plot the fitted means from this model. What do you see? What is different now? (hint). NO HINTS!
+```{r}
+vitd_int_means <- interactionMeans(vitd_int)
+plot(vitd_int_means)
+```
+#### First of all, one way to thing of this graph is... the top left points are the mean of the bottom left graph, and similarly with the right column. Second, what we're seeing is that on the left, given control, there is significant deviation in season population, but much less when given case, or when given neither. On the right, there is greater (and different directional) separation in case/control population when given summer than winter or neither. 
+
+###Attempt to conduct post-hoc comparisons between seasons using Tukey's Honestly Significant Difference method (through the multcomp package). What does the error tell you?
+
+```{r}
+aov <- aov(vitamin_d ~ season * patient_type, data=or_vitd)
+TukeyHSD(aov)
+```
+#### Interpreting this output, we would propose that vitamin d in average changes by 3.5 for the whole population, and is statistically significant. The Control-Case difference is not signifincat. Last, the only interaction that was signifincat was season*control with a difference of almost 4. 
+
+###Now try to use the phia package to do post-hoc tests; use the Bonferroni method for adjusting the p-values.
+```{r}
+testInteractions(vitd_int, pairwise = "season", adjustment = "bonferroni")
+```
+
+#### This p value for summer-winter adjusted by bonferroni is 2 orders of magnitude higher then the p value for the Tukey test, which makes sense, because we know bonferroni is one of the most conservative tests. 
+
+#Final two-way ANOVA
+
+###Try a two-way ANOVA with Type II SS to predict vitamin D from season and region, allowing the two predictors to interact.
+
+```{r}
+vitd_reg <- lm(vitamin_d ~ season * region, data = or_vitd)
+Anova(vitd_int, type = 2)
+```
+
+###Interpret the output here. Is the interaction significant? If it is not, then the Type II sums of squares analysis is valid. What do you say?
+The interaction is not significant so that support our Type II sum of squares
+
+###Use the phia package to plot the fitted means from this model. What do you see?
+```{r}
+vitd_int_regs <- interactionMeans(vitd_reg)
+plot(vitd_int_regs)
+```
+
+#### Season makes even more of a difference in southern regions (where there is more sun!) which makes sense! Oppositely, in the northern regions, winter and summer have very little effect, for instance in the NE. 
+
+###The following two questions are demos- in this actual context you would certainly be p-hacking your way to glory if you ran all these comparisons, even with p-value adjustment!
+WAIT WHAT WHY? even with the p-value adjustments?!
+
+###Imagine we had gotten a significant effect of region. Use phia::testInteractions to test all pairwise differences between regions using Bonferroni p-value adjustment. Any differences stand out?
+```{r}
+testInteractions(vitd_reg, pairwise = "region", adjustment = "bonferroni")
+```
+
+#### This is very interesting, all the p values are 1 becasue our F statistic are below 1, so it's saying that the region does not play a role in explaining the variance. 
+
+###Use the same function, adding the fixed = "season" argument to compare all pairwise differences between regions separately for each season, again using Bonferroni p-value adjustment. 
+
+```{r}
+testInteractions(vitd_reg, pairwise = "region", adjustment = "bonferroni", fixed='season')
+```
+
+###Do you feel confident there is no effect of region, and no interaction between region and season? 
+## Based on this analysis, yes, region does not help explain the variance in the data. HOWEVER, there is value to be taken from this in that we do see trends in our model predictions that help support our sunlight theory and with additional exploration there might be more support to be gained. 

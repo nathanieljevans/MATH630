@@ -24,6 +24,8 @@ library(GGally)
 
 #Overview 
 
+<span style="color:deeppink"> Minor changes in this color </span>
+
 ## Data: [csv](https://raw.githubusercontent.com/apreshill/ohsu-basic-stats/master/data/fishermen_mercury.csv)
 
 ## Paper: [Science Direct](https://www.sciencedirect.com/science/article/pii/S0269749199002614?via%3Dihub#TBL2)
@@ -130,8 +132,10 @@ T
 ```
 ### Why is my Test Statistic negative? did I misinterpret xbar and mu? 
 
+<span style="color:deeppink"> Fixed my upper tcrit value </span>
+
 ```{r}
-upper_tcrit <- 0.025 # TWO TAIL; 0.05 / 2
+upper_tcrit <- qt(1-0.025, 133) # TWO TAIL; 0.05 / 2
 test_stat<- mercury %>% 
   specify(total_mercury ~ fisherman) %>% 
   hypothesize(null = "independence") %>% 
@@ -167,23 +171,30 @@ Use pt() to calculate the 2-sided p-value in R. Does it match the output from in
 ```{r}
 
 mu_f <- (mercury %>% filter(fisherman==1))$total_mercury %>% mean()
-mu_f
+#mu_f
 
 t2 <- (mean(mercury$total_mercury)-mu_f)/(sd(mercury$total_mercury)/sqrt(length(mercury$total_mercury))) #this is compared to the entire population... but I think it's supposed to be just the non-fisherman
-t2
+#t2
 
 dof <- mercury %>% filter(fisherman==0) %>% nrow()  
-dof
+#dof
 
 # from above
 t <- 2.777389	
 # what about ncp? 
 
-pt(q=t, df=dof) # this ends up being supper high
+p1 <- pt(q=t, df=135-2) # this ends up being supper high
+p2 <- 1-pt(q=t, df=135-2)
 
+#p1
+MY.P.VAL.FINALLY <- 2*p2
+
+MY.P.VAL.FINALLY
 ```
 
-#### Well this is clearly incorrect but I'm not sure how to think about this conceptually to remedy it. 
+<span style="color:deeppink"> Fixed my theoretical p value, used the wrong degree of freedom and end of the tail </span>
+
+#### Well this is clearly incorrect but I'm not sure how to think about this conceptually to remedy it. (Not anymore)
 
 
 ##The theorectical confidence interval
@@ -206,6 +217,8 @@ cLOW <- abs(xbar1-xbar2) - Tcrit*(Sp * sqrt( (1/n1) + (1/n2) ) )
 
 theo_CI <- c(cLOW, cUP)
 
+t_test_CI = c(cLOW, cUP)
+
 cUP
 cLOW
 ```
@@ -217,6 +230,12 @@ cLOW
 Using ModernDive 10.7 as an example, as well as our previous resampling lab, conduct a permutation test to evaluate whether there is a mean difference in total mercury between fishermen and non-fishermen. What do you conclude, and how do these results compare to those based on the classical hypothesis test? What, if any, assumptions of each method are comfortable or uncomfortable with?
 
 ```{r}
+set.seed(0)
+mercury_diff <- mercury %>% 
+  specify(total_mercury ~ fisherman) %>%  
+  calculate(stat = "diff in means", order = c(1, 0))
+
+
 null_distn <- mercury %>% 
   specify(total_mercury ~ fisherman) %>% 
   hypothesize(null = "independence") %>% 
@@ -225,11 +244,11 @@ null_distn <- mercury %>%
             order = c("0", "1"))
 
 null_distn %>% 
-  visualize(endpoints = t_test_CI, 
-            direction = "between") # t_test_CI from above, it would be nice to plot the null distribution too
+  visualize(obs_stat = mercury_diff, 
+            direction = "two_sided") # t_test_CI from above, it would be nice to plot the null distribution too
 
 ```
-
+<span style="color:deeppink"> Added a mercury difference instead of the confidence interval (as I had before) </span>
 
 ##Compare t-test to linear regression
 
@@ -242,6 +261,7 @@ summary(my_lm)
 
 ### the p-value is the same as the t-statistic above. 
 
+<span style="color:deeppink"> There were a few minor mistakes in the visualizations and one misconception on my theoretical p-value but in majority I matched the confidence interval and p-value calculations by manual comparison.  </span>
 
 # References 
 
